@@ -145,6 +145,18 @@ export type ArtifactMetadata = {
   title?: string;
 };
 
+export type SearchResult = {
+  title: string;
+  url: string;
+  snippet: string;
+  sources: string[];
+};
+
+export interface SearchProvider {
+  name: string;
+  search(query: string, limit: number): Promise<SearchResult[]>;
+}
+
 export type WebLink = {
   text: string;
   href: string;

@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/browser" },
+    { "path": "./packages/search" },
     { "path": "./packages/sdk" },
     { "path": "./packages/cli" },
     { "path": "./apps/api" }
