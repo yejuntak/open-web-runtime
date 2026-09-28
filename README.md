@@ -114,7 +114,7 @@ Semantic IDs such as `b44` are derived from Chromium backend DOM identities. Obs
 Node 22+ and Chrome/Chromium are required for local mode.
 
 ```bash
-npm install
+npm ci
 cp .env.example .env
 ```
 
@@ -316,9 +316,12 @@ The manifest includes the task trace, browser backend, artifact metadata and SHA
 ## Development
 
 ```bash
+npm ci
 npm run typecheck
 npm test
 ```
+
+CI also runs `npm run test:e2e` against a real Playwright Chromium instance. The smoke flow exercises Search, rendered Fetch, direct Browser sessions, semantic input/click execution, screenshot capture, the Agent planner loop, artifact checksums, run-manifest export, and the Inspector route.
 
 ## Clean-room policy
 

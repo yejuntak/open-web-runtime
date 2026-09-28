@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json tsconfig*.json ./
 COPY packages ./packages
 COPY apps ./apps
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 RUN npm run build
 
 FROM node:22-bookworm-slim
