@@ -1,4 +1,4 @@
-import type { ArtifactMetadata, RuntimeEvent, TaskRecord } from "@owr/core";
+import type { ArtifactMetadata, RunManifest, RuntimeEvent, TaskRecord } from "@owr/core";
 
 export type CreateTaskInput = {
   goal: string;
@@ -71,6 +71,10 @@ export class OWRClient {
 
   listArtifacts(taskId: string): Promise<ArtifactMetadata[]> {
     return this.request(`/v1/tasks/${encodeURIComponent(taskId)}/artifacts`);
+  }
+
+  exportTask(taskId: string): Promise<RunManifest> {
+    return this.request(`/v1/tasks/${encodeURIComponent(taskId)}/export`);
   }
 
   async artifactBlob(artifactId: string): Promise<Blob> {

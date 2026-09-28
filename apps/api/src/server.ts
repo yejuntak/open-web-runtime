@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { browserProviderFromEnv } from "@owr/browser";
-import { AgentRuntime, OpenAICompatiblePlanner } from "@owr/core";
+import { AgentRuntime, createRunManifest, OpenAICompatiblePlanner } from "@owr/core";
 import { inspectorHtml } from "./inspector.js";
 
 const planner = new OpenAICompatiblePlanner({
@@ -97,6 +97,7 @@ const server = createServer(async (req, res) => {
           "GET /v1/tasks/:id",
           "GET /v1/tasks/:id/events",
           "GET /v1/tasks/:id/artifacts",
+          "GET /v1/tasks/:id/export",
           "GET /v1/tasks/:id/frame",
           "GET /v1/artifacts/:id",
           "POST /v1/tasks/:id/approval",
@@ -120,6 +121,20 @@ const server = createServer(async (req, res) => {
         ...task,
         inspectorUrl: `/inspect/${encodeURIComponent(task.id)}`
       });
+    }
+
+    const exportMatch = /^\/v1\/tasks\/([^/]+)\/export$/.exec(url.pathname);
+    if (req.method === "GET" && exportMatch) {
+      const taskId = exportMatch[1]!;
+      const task = runtime.store.get(taskId);
+      if (!task) return json(res, 404, { error: "Task not found" });
+      return json(res, 200, createRunManifest({
+        task,
+        artifacts: runtime.artifacts.list(taskId),
+        runtimeVersion: "0.1.0",
+        screenshotArtifacts: process.env.CAPTURE_SCREENSHOTS !== "false",
+        liveFrames: process.env.LIVE_FRAMES !== "false"
+      }));
     }
 
     const liveFrameMatch = /^\/v1\/tasks\/([^/]+)\/frame$/.exec(url.pathname);

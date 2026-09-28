@@ -14,6 +14,7 @@ Usage:
   owr get --task <id>
   owr inspect --task <id>
   owr artifacts --task <id>
+  owr export --task <id>
   owr approve --task <id>
   owr deny --task <id>
 
@@ -65,6 +66,13 @@ if (command === "artifacts") {
   const taskId = value("--task");
   if (!taskId) usage();
   console.log(JSON.stringify(await client.listArtifacts(taskId), null, 2));
+  process.exit(0);
+}
+
+if (command === "export") {
+  const taskId = value("--task");
+  if (!taskId) usage();
+  console.log(JSON.stringify(await client.exportTask(taskId), null, 2));
   process.exit(0);
 }
 
