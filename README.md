@@ -162,11 +162,25 @@ The API listens on `http://localhost:8787` by default.
 
 ## Docker
 
+Build locally:
+
 ```bash
 cp .env.example .env
 # LLM_API_KEY may stay empty for MCP mode
 docker compose up --build
 ```
+
+Or run the published GHCR image:
+
+```bash
+docker run --rm -p 8787:8787 \
+  --shm-size=1g \
+  -e HOST=0.0.0.0 \
+  -e LLM_API_KEY= \
+  ghcr.io/yejuntak/open-web-runtime:latest
+```
+
+`main` and `v*` tags are automatically published to GitHub Container Registry by GitHub Actions. See `docker-compose.mcp.yml` for a no-key MCP deployment.
 
 The image installs Chromium and sets `CHROME_EXECUTABLE_PATH=/usr/bin/chromium`.
 

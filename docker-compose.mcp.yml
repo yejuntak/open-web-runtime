@@ -1,0 +1,17 @@
+services:
+  open-web-runtime:
+    image: ghcr.io/yejuntak/open-web-runtime:latest
+    ports:
+      - "8787:8787"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      HEADLESS: "true"
+      LLM_API_KEY: ""
+      ALLOW_PRIVATE_NETWORKS: "false"
+      MAX_BROWSER_SESSIONS: 4
+      BROWSER_SESSION_TTL_MS: 300000
+      CAPTURE_SCREENSHOTS: "false"
+      LIVE_FRAMES: "false"
+    shm_size: "1gb"
+    restart: unless-stopped
