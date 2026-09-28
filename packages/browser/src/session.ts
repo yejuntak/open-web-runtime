@@ -1,5 +1,5 @@
 import type { Browser, CDPSession, Page } from "playwright-core";
-import type { AgentAction, BrowserSession, PageObservation, SemanticNode } from "@owr/core";
+import type { AgentAction, BrowserFrame, BrowserSession, PageObservation, SemanticNode } from "@owr/core";
 import { captureSemanticPageGraph } from "./semantic.js";
 
 export class PlaywrightBrowserSession implements BrowserSession {
@@ -21,6 +21,17 @@ export class PlaywrightBrowserSession implements BrowserSession {
   async observe(): Promise<PageObservation> {
     this.lastObservation = await captureSemanticPageGraph(this.page, await this.protocol());
     return this.lastObservation;
+  }
+
+  async screenshot(): Promise<BrowserFrame> {
+    const data = await this.page.screenshot({
+      type: "jpeg",
+      quality: 72,
+      fullPage: false,
+      animations: "disabled",
+      caret: "hide"
+    });
+    return { data: new Uint8Array(data), mimeType: "image/jpeg" };
   }
 
   private node(nodeId: string): SemanticNode {
