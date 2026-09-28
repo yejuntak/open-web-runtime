@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { browserProviderFromEnv } from "@owr/browser";
-import { AgentRuntime, createRunManifest, OpenAICompatiblePlanner } from "@owr/core";
+import { AgentRuntime, createRunManifest, OpenAICompatiblePlanner, WebFetcher } from "@owr/core";
 import { inspectorHtml } from "./inspector.js";
 
 const planner = new OpenAICompatiblePlanner({
@@ -9,8 +9,10 @@ const planner = new OpenAICompatiblePlanner({
   model: process.env.LLM_MODEL ?? "gpt-5.6"
 });
 
+const browserProvider = browserProviderFromEnv();
+
 const runtime = new AgentRuntime(
-  browserProviderFromEnv(),
+  browserProvider,
   planner,
   undefined,
   undefined,
@@ -93,6 +95,7 @@ const server = createServer(async (req, res) => {
         name: "Open Web Runtime",
         version: "0.1.0",
         endpoints: [
+          "POST /v1/fetch",
           "POST /v1/tasks",
           "GET /v1/tasks/:id",
           "GET /v1/tasks/:id/events",
@@ -104,6 +107,27 @@ const server = createServer(async (req, res) => {
           "GET /inspect/:id"
         ]
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/v1/fetch") {
+      const body = await readJson(req);
+      if (typeof body.url !== "string" || !body.url.trim()) {
+        return json(res, 400, { error: "url must be a non-empty absolute URL" });
+      }
+      const settleMs = body.settleMs === undefined ? undefined : Number(body.settleMs);
+      const maxTextChars = body.maxTextChars === undefined ? undefined : Number(body.maxTextChars);
+      try {
+        const document = await webFetcher.fetch({
+          url: body.url,
+          ...(settleMs !== undefined ? { settleMs } : {}),
+          ...(maxTextChars !== undefined ? { maxTextChars } : {})
+        });
+        return json(res, 200, document);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const clientError = /absolute URL|Protocol|Private\/local|credentials|settleMs|maxTextChars/.test(message);
+        return json(res, clientError ? 400 : 502, { error: message });
+      }
     }
 
     if (req.method === "POST" && url.pathname === "/v1/tasks") {

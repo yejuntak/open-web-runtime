@@ -11,6 +11,7 @@ function usage(): never {
 
 Usage:
   owr run --goal "..." [--url https://example.com]
+  owr fetch --url https://example.com [--settle 300]
   owr get --task <id>
   owr inspect --task <id>
   owr artifacts --task <id>
@@ -32,6 +33,18 @@ const client = new OWRClient({
   baseUrl: value("--api") ?? process.env.OWR_API_URL,
   token: value("--token") ?? process.env.OWR_API_TOKEN
 });
+
+if (command === "fetch") {
+  const url = value("--url");
+  if (!url) usage();
+  const settle = value("--settle");
+  const result = await client.fetchPage({
+    url,
+    ...(settle !== undefined ? { settleMs: Number(settle) } : {})
+  });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
 
 if (command === "run") {
   const goal = value("--goal");

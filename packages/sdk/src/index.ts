@@ -1,4 +1,4 @@
-import type { ArtifactMetadata, RunManifest, RuntimeEvent, TaskRecord } from "@owr/core";
+import type { ArtifactMetadata, RunManifest, RuntimeEvent, TaskRecord, WebDocument } from "@owr/core";
 
 export type CreateTaskInput = {
   goal: string;
@@ -47,6 +47,14 @@ export class OWRClient {
 
   health(): Promise<{ ok: boolean; version: string }> {
     return this.request("/health");
+  }
+
+  fetchPage(input: { url: string; settleMs?: number; maxTextChars?: number }): Promise<WebDocument> {
+    return this.request("/v1/fetch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input)
+    });
   }
 
   createTask(input: CreateTaskInput): Promise<TaskRecord & { inspectorUrl?: string }> {
