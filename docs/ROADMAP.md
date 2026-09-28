@@ -11,6 +11,8 @@
 - [x] accessibility-tree merge
 - [x] REST task API
 - [x] SSE events
+- [x] TypeScript SDK
+- [x] CLI
 - [x] tests and CI
 
 ## v0.2 reliability
@@ -27,7 +29,7 @@
 
 - worker queue and concurrency controls
 - encrypted browser profiles
-- provider adapters
+- browser-provider adapters and live-view metadata
 - observability/export format
 - policy plugins
-- MCP and SDK packages
+- MCP adapter

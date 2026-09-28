@@ -57,6 +57,7 @@ The planner never gets arbitrary JavaScript or a raw Playwright handle. It recei
 - REST task API
 - SSE event stream
 - optional bearer-token API protection
+- TypeScript SDK and `owr` CLI
 - Docker image
 - tests and GitHub Actions
 
@@ -183,6 +184,12 @@ packages/core/
   task store
   action types
 
+packages/sdk/
+  TypeScript API + SSE client
+
+packages/cli/
+  command-line client
+
 packages/browser/
   CDP semantic graph
   local Chromium provider
@@ -192,6 +199,42 @@ packages/browser/
 docs/
   architecture
   roadmap
+```
+
+## SDK
+
+```ts
+import { OWRClient, waitForTask } from "@owr/sdk";
+
+const client = new OWRClient({
+  baseUrl: "http://localhost:8787",
+  token: process.env.OWR_API_TOKEN
+});
+
+const task = await client.createTask({
+  goal: "Return the page title as JSON.",
+  startUrl: "https://example.com"
+});
+
+console.log(await waitForTask(client, task.id));
+```
+
+## CLI
+
+```bash
+npm run build
+./packages/cli/dist/index.js run \
+  --goal "Return the page title as JSON." \
+  --url https://example.com
+```
+
+Approval flow:
+
+```bash
+./packages/cli/dist/index.js get --task <id>
+./packages/cli/dist/index.js approve --task <id>
+# or
+./packages/cli/dist/index.js deny --task <id>
 ```
 
 ## Development
@@ -219,7 +262,7 @@ The next reliability milestones are:
 - BrowserGym/WebArena evaluation
 - worker/concurrency layer
 - encrypted browser profiles
-- MCP and SDK packages
+- MCP adapter
 
 See [docs/ROADMAP.md](./docs/ROADMAP.md).
 
