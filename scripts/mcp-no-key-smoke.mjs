@@ -67,6 +67,7 @@ try {
       ...process.env,
       HOST: "127.0.0.1",
       PORT: String(apiPort),
+      MCP_ONLY: "true",
       LLM_API_KEY: "",
       SEARXNG_BASE_URL: "",
       ALLOW_PRIVATE_NETWORKS: "true",
@@ -80,6 +81,9 @@ try {
   child.stderr.on("data", chunk => logs.push(chunk.toString()));
 
   await waitForHealth(baseUrl, child);
+
+  const hiddenRest = await fetch(baseUrl + "/");
+  assert.equal(hiddenRest.status, 404, "MCP-only mode should hide REST routes");
 
   client = new Client(
     { name: "owr-mcp-smoke", version: "1.0.0" },
