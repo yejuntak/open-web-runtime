@@ -137,6 +137,7 @@ export type ArtifactMetadata = {
   kind: ArtifactKind;
   mimeType: string;
   byteLength: number;
+  sha256: string;
   createdAt: string;
   step?: number;
   label?: string;

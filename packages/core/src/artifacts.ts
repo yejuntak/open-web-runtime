@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { ArtifactMetadata, ArtifactKind, BrowserFrame, LiveFrameMetadata } from "./types.js";
 
 type StoredArtifact = {
@@ -41,6 +41,7 @@ export class InMemoryArtifactStore {
       kind: input.kind,
       mimeType: input.mimeType,
       byteLength: input.data.byteLength,
+      sha256: createHash("sha256").update(input.data).digest("hex"),
       createdAt: new Date().toISOString(),
       ...(input.step !== undefined ? { step: input.step } : {}),
       ...(input.label ? { label: input.label } : {}),

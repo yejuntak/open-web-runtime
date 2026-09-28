@@ -1,6 +1,6 @@
 import type { AgentAction, RecordedAgentAction } from "./types.js";
 
-function traceUrl(value: string): string {
+export function redactUrlForTrace(value: string): string {
   try {
     const url = new URL(value);
     url.username = "";
@@ -16,7 +16,7 @@ function traceUrl(value: string): string {
 export function redactAgentAction(action: AgentAction): RecordedAgentAction {
   switch (action.type) {
     case "navigate":
-      return { type: "navigate", url: traceUrl(action.url) };
+      return { type: "navigate", url: redactUrlForTrace(action.url) };
     case "click":
       return { type: "click", nodeId: action.nodeId };
     case "type":
