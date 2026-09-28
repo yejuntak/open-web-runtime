@@ -1,0 +1,13 @@
+{
+  "name": "@owr/browser",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "build": "tsc -b" },
+  "dependencies": {
+    "@owr/core": "0.1.0",
+    "playwright-core": "^1.55.0"
+  }
+}
