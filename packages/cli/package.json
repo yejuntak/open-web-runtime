@@ -1,0 +1,13 @@
+{
+  "name": "@owr/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": { "owr": "./dist/index.js" },
+  "scripts": { "build": "tsc -b" },
+  "dependencies": {
+    "@owr/core": "0.1.0",
+    "@owr/sdk": "0.1.0"
+  }
+}
