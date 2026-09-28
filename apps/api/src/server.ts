@@ -18,7 +18,8 @@ const runtime = new AgentRuntime(
     maxSteps: Number(process.env.MAX_AGENT_STEPS ?? 20),
     allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true",
     requireConfirmationForHighRisk: process.env.REQUIRE_CONFIRMATION_FOR_HIGH_RISK !== "false",
-    captureScreenshots: process.env.CAPTURE_SCREENSHOTS !== "false"
+    captureScreenshots: process.env.CAPTURE_SCREENSHOTS !== "false",
+    liveFrames: process.env.LIVE_FRAMES !== "false"
   }
 );
 
@@ -96,6 +97,7 @@ const server = createServer(async (req, res) => {
           "GET /v1/tasks/:id",
           "GET /v1/tasks/:id/events",
           "GET /v1/tasks/:id/artifacts",
+          "GET /v1/tasks/:id/frame",
           "GET /v1/artifacts/:id",
           "POST /v1/tasks/:id/approval",
           "GET /inspect/:id"
@@ -118,6 +120,34 @@ const server = createServer(async (req, res) => {
         ...task,
         inspectorUrl: `/inspect/${encodeURIComponent(task.id)}`
       });
+    }
+
+    const liveFrameMatch = /^\/v1\/tasks\/([^/]+)\/frame$/.exec(url.pathname);
+    if (req.method === "GET" && liveFrameMatch) {
+      const taskId = liveFrameMatch[1]!;
+      if (!runtime.store.get(taskId)) return json(res, 404, { error: "Task not found" });
+      const frame = runtime.artifacts.getLiveFrame(taskId);
+      if (!frame) return json(res, 404, { error: "No live frame available" });
+
+      const etag = `W/"${frame.metadata.sequence}"`;
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304, { etag, "cache-control": "no-store" });
+        res.end();
+        return;
+      }
+
+      const data = Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
+      res.writeHead(200, {
+        "content-type": frame.metadata.mimeType,
+        "content-length": data.byteLength,
+        "cache-control": "no-store",
+        etag,
+        "x-owr-frame-sequence": String(frame.metadata.sequence),
+        "x-owr-captured-at": frame.metadata.capturedAt,
+        "x-content-type-options": "nosniff"
+      });
+      res.end(data);
+      return;
     }
 
     const artifactMatch = /^\/v1\/artifacts\/([^/]+)$/.exec(url.pathname);
