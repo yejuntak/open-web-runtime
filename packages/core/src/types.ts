@@ -119,6 +119,28 @@ export type RecordedAgentAction =
   | { type: "wait"; ms: number }
   | { type: "complete"; summary?: string };
 
+export type RuntimeFailureCode =
+  | "stale_target"
+  | "target_not_visible"
+  | "target_disabled"
+  | "ambiguous_target"
+  | "navigation_timeout"
+  | "network"
+  | "browser_closed"
+  | "policy_denied"
+  | "invalid_action"
+  | "planner_error"
+  | "browser_error"
+  | "action_failure_budget_exhausted"
+  | "step_budget_exhausted"
+  | "unknown";
+
+export type RuntimeFailure = {
+  code: RuntimeFailureCode;
+  message: string;
+  retryable: boolean;
+};
+
 export type StepRecord = {
   step: number;
   action: RecordedAgentAction;
@@ -126,6 +148,7 @@ export type StepRecord = {
   after?: Pick<PageObservation, "url" | "title">;
   ok: boolean;
   error?: string;
+  failure?: RuntimeFailure;
   durationMs: number;
 };
 
@@ -199,6 +222,7 @@ export type TaskRecord = {
   updatedAt: string;
   result?: unknown;
   error?: string;
+  failure?: RuntimeFailure;
   steps: StepRecord[];
   browser?: { backend: string; debugUrl?: string };
   approval?: { reason: string; action: RecordedAgentAction };
@@ -212,11 +236,11 @@ export type RuntimeEvent =
   | { type: "artifact.created"; taskId: string; at: string; artifact: ArtifactMetadata }
   | { type: "step.started"; taskId: string; at: string; step: number; action: RecordedAgentAction }
   | { type: "step.completed"; taskId: string; at: string; step: number; url: string; title: string; durationMs: number }
-  | { type: "step.failed"; taskId: string; at: string; step: number; error: string; durationMs: number }
+  | { type: "step.failed"; taskId: string; at: string; step: number; error: string; failure: RuntimeFailure; durationMs: number }
   | { type: "task.waiting_for_approval"; taskId: string; at: string; reason: string; action: RecordedAgentAction }
   | { type: "task.completed"; taskId: string; at: string; result: unknown }
   | { type: "task.cancelled"; taskId: string; at: string; reason: string }
-  | { type: "task.failed"; taskId: string; at: string; error: string };
+  | { type: "task.failed"; taskId: string; at: string; error: string; failure: RuntimeFailure };
 
 export interface BrowserSession {
   backend: string;

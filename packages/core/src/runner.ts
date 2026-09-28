@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { InMemoryArtifactStore } from "./artifacts.js";
 import { diffObservations } from "./diff.js";
 import { RuntimeEventBus } from "./events.js";
+import { classifyRuntimeError, RuntimeFailureError } from "./failure.js";
 import { actionPolicy, navigationPolicy } from "./policy.js";
 import { InMemoryTaskStore } from "./store.js";
 import { redactAgentAction } from "./trace.js";
@@ -13,6 +14,7 @@ export type AgentRuntimeOptions = {
   requireConfirmationForHighRisk?: boolean;
   captureScreenshots?: boolean;
   liveFrames?: boolean;
+  maxConsecutiveActionFailures?: number;
 };
 
 export class AgentRuntime {
@@ -95,14 +97,24 @@ export class AgentRuntime {
       }
 
       const maxSteps = this.options.maxSteps ?? 20;
+      const maxConsecutiveFailures = this.options.maxConsecutiveActionFailures ?? 3;
+      if (!Number.isInteger(maxConsecutiveFailures) || maxConsecutiveFailures < 1) {
+        throw new Error("maxConsecutiveActionFailures must be a positive integer");
+      }
       let previousObservation: PageObservation | undefined;
+      let consecutiveFailures = 0;
       for (let step = 1; step <= maxSteps; step += 1) {
         const observation = await browser.observe();
         await this.capture(taskId, browser, step === 1 ? "initial" : "observe", observation, step);
 
         const current = this.store.get(taskId)!;
         const diff = previousObservation ? diffObservations(previousObservation, observation) : undefined;
-        const action = await this.planner.next({ goal: current.goal, step, observation, diff, history: current.steps });
+        let action;
+        try {
+          action = await this.planner.next({ goal: current.goal, step, observation, diff, history: current.steps });
+        } catch (error) {
+          throw new RuntimeFailureError(classifyRuntimeError(error, "planner"));
+        }
 
         if (action.type === "complete") {
           await this.capture(taskId, browser, "complete", observation, step);
@@ -138,21 +150,40 @@ export class AgentRuntime {
           await this.capture(taskId, browser, `after:${action.type}`, after, step);
           const durationMs = Math.round(performance.now() - started);
           record = { step, action: redactAgentAction(action), before: { url: observation.url, title: observation.title }, after: { url: after.url, title: after.title }, ok: true, durationMs };
+          consecutiveFailures = 0;
           this.events.emit({ type: "step.completed", taskId, at: new Date().toISOString(), step, url: after.url, title: after.title, durationMs });
         } catch (error) {
           const durationMs = Math.round(performance.now() - started);
-          const message = error instanceof Error ? error.message : String(error);
-          record = { step, action: redactAgentAction(action), before: { url: observation.url, title: observation.title }, ok: false, error: message, durationMs };
-          this.events.emit({ type: "step.failed", taskId, at: new Date().toISOString(), step, error: message, durationMs });
+          const failure = classifyRuntimeError(error, "browser");
+          const message = failure.message;
+          consecutiveFailures += 1;
+          record = { step, action: redactAgentAction(action), before: { url: observation.url, title: observation.title }, ok: false, error: message, failure, durationMs };
+          this.events.emit({ type: "step.failed", taskId, at: new Date().toISOString(), step, error: message, failure, durationMs });
         }
         this.store.update(taskId, recordTask => { recordTask.steps.push(record); });
         previousObservation = observation;
+        if (!record.ok && consecutiveFailures >= maxConsecutiveFailures) {
+          throw new RuntimeFailureError({
+            code: "action_failure_budget_exhausted",
+            message: `Action recovery budget exhausted after ${consecutiveFailures} consecutive failures. Last failure: ${record.failure?.code ?? "unknown"}.`,
+            retryable: false
+          });
+        }
       }
-      throw new Error(`Maximum step count (${maxSteps}) reached without completion.`);
+      throw new RuntimeFailureError({
+        code: "step_budget_exhausted",
+        message: `Maximum step count (${maxSteps}) reached without completion.`,
+        retryable: false
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.store.update(taskId, record => { record.status = record.status === "cancelled" ? "cancelled" : "failed"; record.error = message; });
-      this.events.emit({ type: "task.failed", taskId, at: new Date().toISOString(), error: message });
+      const failure = error instanceof RuntimeFailureError ? error.failure : classifyRuntimeError(error);
+      const message = failure.message;
+      this.store.update(taskId, record => {
+        record.status = record.status === "cancelled" ? "cancelled" : "failed";
+        record.error = message;
+        record.failure = failure;
+      });
+      this.events.emit({ type: "task.failed", taskId, at: new Date().toISOString(), error: message, failure });
       return this.store.get(taskId)!;
     } finally {
       if (stopLiveFrames) await Promise.resolve(stopLiveFrames()).catch(() => undefined);

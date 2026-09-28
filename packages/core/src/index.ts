@@ -3,6 +3,7 @@ export * from "./browser-registry.js";
 export * from "./diff.js";
 export * from "./events.js";
 export * from "./fetcher.js";
+export * from "./failure.js";
 export * from "./manifest.js";
 export * from "./planner.js";
 export * from "./policy.js";

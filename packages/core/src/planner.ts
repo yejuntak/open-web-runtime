@@ -63,7 +63,7 @@ function compact(context: PlannerContext) {
     },
     changeSummary,
     recentHistory: context.history.slice(-6).map(step => ({
-      step: step.step, action: step.action, ok: step.ok, error: step.error, after: step.after
+      step: step.step, action: step.action, ok: step.ok, error: step.error, failure: step.failure, after: step.after
     }))
   };
 }
