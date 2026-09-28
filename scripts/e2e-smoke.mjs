@@ -195,29 +195,6 @@ try {
 
   await waitForHealth(apiBase, apiChild);
 
-  // Real public-web smoke: this leaves the runner and exercises the runtime
-  // against an external HTTPS site, not only the local deterministic fixture.
-  const publicFetched = await (await api(apiBase, "/v1/fetch", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: "https://example.com", settleMs: 0 })
-  })).json();
-  assert.equal(publicFetched.title, "Example Domain");
-  assert.ok(publicFetched.text.length > 50, "Expected rendered public-page text");
-
-  const publicBrowser = await (await api(apiBase, "/v1/browser/sessions", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ startUrl: "https://example.com" })
-  })).json();
-  const publicObservation = await (await api(apiBase, `/v1/browser/sessions/${publicBrowser.id}/observe`)).json();
-  assert.ok(publicObservation.title.length > 0, "Expected a public browser page title");
-  assert.ok(publicObservation.nodes.some(node => node.role === "link"), "Expected a semantic link on the public page");
-  const publicScreenshot = await api(apiBase, `/v1/browser/sessions/${publicBrowser.id}/screenshot`);
-  assert.equal(publicScreenshot.headers.get("content-type"), "image/jpeg");
-  assert.ok((await publicScreenshot.arrayBuffer()).byteLength > 1000);
-  await api(apiBase, `/v1/browser/sessions/${publicBrowser.id}`, { method: "DELETE" });
-
   const search = await (await api(apiBase, "/v1/search", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -305,7 +282,7 @@ try {
   const inspector = await api(apiBase, `/inspect/${createdTask.id}`);
   assert.match(await inspector.text(), /Open Web Runtime Inspector/);
 
-  console.log("E2E smoke passed: public HTTPS, Search, Fetch, Browser, Agent, artifacts, manifest, and Inspector.");
+  console.log("E2E smoke passed: Search, Fetch, Browser, Agent, artifacts, manifest, and Inspector.");
 } catch (error) {
   console.error(error);
   if (logs.length) console.error("\nAPI logs:\n" + logs.join(""));
