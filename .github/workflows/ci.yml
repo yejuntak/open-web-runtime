@@ -12,7 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
 
@@ -23,19 +24,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps --only-shell chromium
       - run: npm run test:e2e
       - run: npm run test:mcp
-
-  lockfile-capture:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Emit lockfile
-        run: echo "LOCKFILE_BASE64=$(base64 -w0 package-lock.json)"
