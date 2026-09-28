@@ -11,6 +11,7 @@ function usage(): never {
 
 Usage:
   owr run --goal "..." [--url https://example.com]
+  owr search --query "browser agents" [--limit 10]
   owr fetch --url https://example.com [--settle 300]
   owr get --task <id>
   owr inspect --task <id>
@@ -33,6 +34,18 @@ const client = new OWRClient({
   baseUrl: value("--api") ?? process.env.OWR_API_URL,
   token: value("--token") ?? process.env.OWR_API_TOKEN
 });
+
+if (command === "search") {
+  const query = value("--query");
+  if (!query) usage();
+  const limit = value("--limit");
+  const result = await client.search({
+    query,
+    ...(limit !== undefined ? { limit: Number(limit) } : {})
+  });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
 
 if (command === "fetch") {
   const url = value("--url");

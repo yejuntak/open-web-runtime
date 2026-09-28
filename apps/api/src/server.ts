@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { browserProviderFromEnv } from "@owr/browser";
 import { AgentRuntime, createRunManifest, OpenAICompatiblePlanner, WebFetcher } from "@owr/core";
+import { searchProviderFromEnv } from "@owr/search";
 import { inspectorHtml } from "./inspector.js";
 
 const planner = new OpenAICompatiblePlanner({
@@ -28,6 +29,7 @@ const runtime = new AgentRuntime(
 const webFetcher = new WebFetcher(browserProvider, {
   allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true"
 });
+const searchProvider = searchProviderFromEnv();
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
@@ -99,6 +101,7 @@ const server = createServer(async (req, res) => {
         name: "Open Web Runtime",
         version: "0.1.0",
         endpoints: [
+          "POST /v1/search",
           "POST /v1/fetch",
           "POST /v1/tasks",
           "GET /v1/tasks/:id",
@@ -111,6 +114,24 @@ const server = createServer(async (req, res) => {
           "GET /inspect/:id"
         ]
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/v1/search") {
+      if (!searchProvider) return json(res, 503, { error: "Search provider is not configured. Set SEARXNG_BASE_URL." });
+      const body = await readJson(req);
+      if (typeof body.query !== "string" || !body.query.trim()) {
+        return json(res, 400, { error: "query must be a non-empty string" });
+      }
+      const limit = body.limit === undefined ? 10 : Number(body.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+        return json(res, 400, { error: "limit must be an integer between 1 and 20" });
+      }
+      try {
+        const results = await searchProvider.search(body.query, limit);
+        return json(res, 200, { query: body.query, provider: searchProvider.name, results });
+      } catch (error) {
+        return json(res, 502, { error: error instanceof Error ? error.message : String(error) });
+      }
     }
 
     if (req.method === "POST" && url.pathname === "/v1/fetch") {
