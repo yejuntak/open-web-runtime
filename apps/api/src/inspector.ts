@@ -106,7 +106,11 @@ const TASK_ID = ${id};
 let token = localStorage.getItem("owr-inspector-token") || "";
 let currentArtifactId = "";
 let currentObjectUrl = "";
+let liveFrameEtag = "";
+let displayingLive = false;
+let lastTaskStatus = "";
 let polling = false;
+let framePolling = false;
 
 function headers(extra) {
   const out = new Headers(extra || {});
@@ -140,6 +144,7 @@ function actionLabel(action) {
 
 function renderTask(task) {
   const status = task.status || "unknown";
+  lastTaskStatus = status;
   document.getElementById("status").textContent = status.replaceAll("_"," ");
   document.getElementById("dot").className = "dot " + status;
   document.getElementById("goal").textContent = task.goal || "";
@@ -193,7 +198,7 @@ function renderTask(task) {
 async function renderArtifact(artifact) {
   document.getElementById("address").textContent = artifact.url || artifact.title || "Browser frame";
   document.getElementById("frameTime").textContent = (artifact.label || "frame") + " · " + new Date(artifact.createdAt).toLocaleTimeString();
-  if (artifact.id === currentArtifactId) return;
+  if (artifact.id === currentArtifactId && !displayingLive) return;
   currentArtifactId = artifact.id;
   const response = await api("/v1/artifacts/" + encodeURIComponent(artifact.id));
   const blob = await response.blob();
@@ -203,6 +208,48 @@ async function renderArtifact(artifact) {
   img.src = currentObjectUrl;
   img.style.display = "block";
   document.getElementById("empty").style.display = "none";
+  displayingLive = false;
+}
+
+async function pollLiveFrame() {
+  if (framePolling) return;
+  framePolling = true;
+  try {
+    const frameHeaders = {};
+    if (liveFrameEtag) frameHeaders["if-none-match"] = liveFrameEtag;
+    const response = await fetch("/v1/tasks/" + encodeURIComponent(TASK_ID) + "/frame", { headers: headers(frameHeaders) });
+
+    if (response.status === 401) {
+      document.getElementById("auth").style.display = "flex";
+      throw new Error("Unauthorized");
+    }
+    if (response.status === 304) return;
+    if (response.status === 404) {
+      if (displayingLive && ["completed","failed","cancelled"].includes(lastTaskStatus)) {
+        displayingLive = false;
+        currentArtifactId = "";
+      }
+      return;
+    }
+    if (!response.ok) throw new Error("Frame HTTP " + response.status);
+
+    liveFrameEtag = response.headers.get("etag") || liveFrameEtag;
+    const capturedAt = response.headers.get("x-owr-captured-at");
+    const blob = await response.blob();
+    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = URL.createObjectURL(blob);
+
+    const img = document.getElementById("frame");
+    img.src = currentObjectUrl;
+    img.style.display = "block";
+    document.getElementById("empty").style.display = "none";
+    document.getElementById("frameTime").textContent = "LIVE · " + (capturedAt ? new Date(capturedAt).toLocaleTimeString() : "now");
+    displayingLive = true;
+  } catch (error) {
+    if (String(error.message || error) !== "Unauthorized") console.debug(error);
+  } finally {
+    framePolling = false;
+  }
 }
 
 async function poll() {
@@ -212,7 +259,7 @@ async function poll() {
     const task = await (await api("/v1/tasks/" + encodeURIComponent(TASK_ID))).json();
     renderTask(task);
     const artifacts = await (await api("/v1/tasks/" + encodeURIComponent(TASK_ID) + "/artifacts")).json();
-    if (artifacts.length) await renderArtifact(artifacts[artifacts.length - 1]);
+    if (artifacts.length && !displayingLive) await renderArtifact(artifacts[artifacts.length - 1]);
   } catch (error) {
     if (String(error.message || error) !== "Unauthorized") {
       document.getElementById("status").textContent = "connection error";
@@ -240,13 +287,16 @@ document.getElementById("saveToken").addEventListener("click", function(){
   else localStorage.removeItem("owr-inspector-token");
   document.getElementById("auth").style.display = "none";
   poll();
+  pollLiveFrame();
 });
 document.getElementById("token").addEventListener("keydown", function(event){
   if (event.key === "Enter") document.getElementById("saveToken").click();
 });
 window.addEventListener("beforeunload", function(){ if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl); });
 poll();
+pollLiveFrame();
 setInterval(poll, 900);
+setInterval(pollLiveFrame, 350);
 </script>
 </body>
 </html>`;
