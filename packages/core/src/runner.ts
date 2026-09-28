@@ -142,7 +142,7 @@ export class AgentRuntime {
         } catch (error) {
           const durationMs = Math.round(performance.now() - started);
           const message = error instanceof Error ? error.message : String(error);
-          record = { step, action, before: { url: observation.url, title: observation.title }, ok: false, error: message, durationMs };
+          record = { step, action: redactAgentAction(action), before: { url: observation.url, title: observation.title }, ok: false, error: message, durationMs };
           this.events.emit({ type: "step.failed", taskId, at: new Date().toISOString(), step, error: message, durationMs });
         }
         this.store.update(taskId, recordTask => { recordTask.steps.push(record); });
