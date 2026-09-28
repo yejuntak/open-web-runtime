@@ -145,6 +145,21 @@ export type ArtifactMetadata = {
   title?: string;
 };
 
+export type WebLink = {
+  text: string;
+  href: string;
+};
+
+export type WebDocument = {
+  url: string;
+  title: string;
+  text: string;
+  links: WebLink[];
+  fetchedAt: string;
+  description?: string;
+  canonicalUrl?: string;
+};
+
 export type BrowserFrame = {
   data: Uint8Array;
   mimeType: string;
@@ -197,6 +212,7 @@ export interface BrowserSession {
   observe(): Promise<PageObservation>;
   execute(action: AgentAction): Promise<void>;
   screenshot?(): Promise<BrowserFrame>;
+  extractDocument?(): Promise<WebDocument>;
   subscribeFrames?(listener: (frame: BrowserFrame) => void): Promise<() => void | Promise<void>>;
   close(): Promise<void>;
 }
