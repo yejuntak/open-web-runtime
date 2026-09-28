@@ -1,4 +1,4 @@
-import type { ArtifactMetadata, RunManifest, RuntimeEvent, SearchResult, TaskRecord, WebDocument } from "@owr/core";
+import type { AgentAction, ArtifactMetadata, BrowserActionResult, BrowserSessionMetadata, PageObservation, RunManifest, RuntimeEvent, SearchResult, TaskRecord, WebDocument } from "@owr/core";
 
 export type CreateTaskInput = {
   goal: string;
@@ -47,6 +47,38 @@ export class OWRClient {
 
   health(): Promise<{ ok: boolean; version: string }> {
     return this.request("/health");
+  }
+
+  createBrowserSession(startUrl?: string): Promise<BrowserSessionMetadata> {
+    return this.request("/v1/browser/sessions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...(startUrl ? { startUrl } : {}) })
+    });
+  }
+
+  listBrowserSessions(): Promise<BrowserSessionMetadata[]> {
+    return this.request("/v1/browser/sessions");
+  }
+
+  observeBrowserSession(sessionId: string): Promise<PageObservation> {
+    return this.request(`/v1/browser/sessions/${encodeURIComponent(sessionId)}/observe`);
+  }
+
+  actBrowserSession(sessionId: string, action: AgentAction, confirmed = false): Promise<BrowserActionResult> {
+    return this.request(`/v1/browser/sessions/${encodeURIComponent(sessionId)}/actions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, confirmed })
+    });
+  }
+
+  async browserScreenshot(sessionId: string): Promise<Blob> {
+    return (await this.response(`/v1/browser/sessions/${encodeURIComponent(sessionId)}/screenshot`)).blob();
+  }
+
+  closeBrowserSession(sessionId: string): Promise<{ closed: true }> {
+    return this.request(`/v1/browser/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
   }
 
   search(input: { query: string; limit?: number }): Promise<{ query: string; provider: string; results: SearchResult[] }> {

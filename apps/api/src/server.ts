@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { browserProviderFromEnv } from "@owr/browser";
-import { AgentRuntime, createRunManifest, OpenAICompatiblePlanner, WebFetcher } from "@owr/core";
+import { AgentRuntime, BrowserSessionRegistry, createRunManifest, OpenAICompatiblePlanner, parseAgentAction, WebFetcher } from "@owr/core";
 import { searchProviderFromEnv } from "@owr/search";
 import { inspectorHtml } from "./inspector.js";
 
@@ -30,6 +30,14 @@ const webFetcher = new WebFetcher(browserProvider, {
   allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true"
 });
 const searchProvider = searchProviderFromEnv();
+const browserSessions = new BrowserSessionRegistry(browserProvider, {
+  ttlMs: Number(process.env.BROWSER_SESSION_TTL_MS ?? 300000),
+  maxSessions: Number(process.env.MAX_BROWSER_SESSIONS ?? 10),
+  allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true",
+  requireConfirmationForHighRisk: process.env.REQUIRE_CONFIRMATION_FOR_HIGH_RISK !== "false"
+});
+const browserSweep = setInterval(() => { void browserSessions.sweepExpired(); }, 60000);
+browserSweep.unref();
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
@@ -101,6 +109,12 @@ const server = createServer(async (req, res) => {
         name: "Open Web Runtime",
         version: "0.1.0",
         endpoints: [
+          "GET /v1/browser/sessions",
+          "POST /v1/browser/sessions",
+          "GET /v1/browser/sessions/:id/observe",
+          "POST /v1/browser/sessions/:id/actions",
+          "GET /v1/browser/sessions/:id/screenshot",
+          "DELETE /v1/browser/sessions/:id",
           "POST /v1/search",
           "POST /v1/fetch",
           "POST /v1/tasks",
@@ -114,6 +128,71 @@ const server = createServer(async (req, res) => {
           "GET /inspect/:id"
         ]
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/v1/browser/sessions") {
+      return json(res, 200, browserSessions.list());
+    }
+
+    if (req.method === "POST" && url.pathname === "/v1/browser/sessions") {
+      const body = await readJson(req);
+      const startUrl = body.startUrl === undefined ? undefined : String(body.startUrl);
+      try {
+        return json(res, 201, await browserSessions.create(startUrl));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return json(res, /session limit/.test(message) ? 429 : 400, { error: message });
+      }
+    }
+
+    const browserObserveMatch = /^\/v1\/browser\/sessions\/([^/]+)\/observe$/.exec(url.pathname);
+    if (req.method === "GET" && browserObserveMatch) {
+      try {
+        return json(res, 200, await browserSessions.observe(browserObserveMatch[1]!));
+      } catch (error) {
+        return json(res, 404, { error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    const browserActionMatch = /^\/v1\/browser\/sessions\/([^/]+)\/actions$/.exec(url.pathname);
+    if (req.method === "POST" && browserActionMatch) {
+      try {
+        const body = await readJson(req);
+        const action = parseAgentAction(body.action);
+        const result = await browserSessions.act(browserActionMatch[1]!, action, body.confirmed === true);
+        return json(res, 200, result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return json(res, /not found/.test(message) ? 404 : 400, { error: message });
+      }
+    }
+
+    const browserScreenshotMatch = /^\/v1\/browser\/sessions\/([^/]+)\/screenshot$/.exec(url.pathname);
+    if (req.method === "GET" && browserScreenshotMatch) {
+      try {
+        const frame = await browserSessions.screenshot(browserScreenshotMatch[1]!);
+        const data = Buffer.from(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength);
+        res.writeHead(200, {
+          "content-type": frame.mimeType,
+          "content-length": data.byteLength,
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff"
+        });
+        res.end(data);
+        return;
+      } catch (error) {
+        return json(res, 404, { error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    const browserSessionMatch = /^\/v1\/browser\/sessions\/([^/]+)$/.exec(url.pathname);
+    if (browserSessionMatch && req.method === "GET") {
+      const metadata = browserSessions.getMetadata(browserSessionMatch[1]!);
+      return metadata ? json(res, 200, metadata) : json(res, 404, { error: "Browser session not found" });
+    }
+    if (browserSessionMatch && req.method === "DELETE") {
+      const closed = await browserSessions.close(browserSessionMatch[1]!);
+      return closed ? json(res, 200, { closed: true }) : json(res, 404, { error: "Browser session not found" });
     }
 
     if (req.method === "POST" && url.pathname === "/v1/search") {
