@@ -42,8 +42,54 @@ Trace / SSE / Result
 
 The planner never gets arbitrary JavaScript or a raw Playwright handle. It receives a bounded semantic graph and can return only the runtime action contract.
 
+## Four primitives
+
+### Search
+
+Search is provider-driven. The first adapter targets an operator-supplied SearXNG instance; no search engine is bundled into this repository.
+
+```bash
+SEARXNG_BASE_URL=https://your-search.example
+./packages/cli/dist/index.js search --query "browser agent benchmarks" --limit 5
+```
+
+### Fetch
+
+Fetch renders a URL in Chromium and returns bounded text, page metadata, and normalized links without invoking an LLM.
+
+```bash
+./packages/cli/dist/index.js fetch --url https://example.com
+```
+
+Fetch uses the same navigation policy as Agent and rejects private/local network destinations by default.
+
+### Agent
+
+Agent converts a goal into typed actions over the Semantic Page Graph. Every step is policy-checked, traced, and visible in the Inspector.
+
+```bash
+./packages/cli/dist/index.js run \
+  --goal "Return the primary call to action as JSON." \
+  --url https://example.com
+```
+
+### Browser
+
+Browser exposes managed sessions for clients that want direct control while keeping OWR's policy layer.
+
+```bash
+curl -X POST http://localhost:8787/v1/browser/sessions \
+  -H 'content-type: application/json' \
+  -d '{"startUrl":"https://example.com"}'
+```
+
+Then observe or submit typed actions through `/v1/browser/sessions/:id/observe` and `/v1/browser/sessions/:id/actions`. Sessions are serialized, bounded in number, and expire by TTL.
+
 ## Current capabilities
 
+- Search provider contract and SearXNG HTTP adapter
+- rendered Fetch primitive
+- managed direct Browser sessions
 - natural-language browser task loop
 - OpenAI-compatible planner adapter
 - local Chromium browser backend
@@ -201,6 +247,9 @@ packages/core/
   task store
   action types
 
+packages/search/
+  provider contract adapter for SearXNG
+
 packages/sdk/
   TypeScript API + SSE client
 
@@ -253,6 +302,16 @@ Approval flow:
 # or
 ./packages/cli/dist/index.js deny --task <id>
 ```
+
+## Run manifest
+
+Export a redacted, checksum-backed execution manifest:
+
+```bash
+./packages/cli/dist/index.js export --task <id>
+```
+
+The manifest includes the task trace, browser backend, artifact metadata and SHA-256 checksums. Typed text, select values, URL credentials/query strings, and browser debug URLs are excluded from the persisted trace/export path.
 
 ## Development
 

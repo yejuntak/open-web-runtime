@@ -22,3 +22,8 @@ When enabled, the inspector can expose browser content through two channels:
 - screenshot artifacts: bounded per task, but retained in memory for later inspection.
 
 Both can contain credentials, personal information, or other sensitive page content even when structured traces avoid recording form values. Disable them with `LIVE_FRAMES=false` and/or `CAPTURE_SCREENSHOTS=false` for sensitive workloads. Production deployments should replace the in-memory artifact store with an encrypted, access-controlled backend and explicit retention policy.
+
+
+## Trace redaction
+
+The execution engine uses full action payloads only for the immediate browser operation. Persisted step records and approval/event payloads redact typed text and select values to lengths, and traced navigation removes credentials, query strings, and fragments. Task goals and final results remain user-controlled data and may still contain sensitive information.

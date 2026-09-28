@@ -2,9 +2,12 @@
 
 ## v0.1 foundation
 
-- [x] typed agent actions
+- [x] Search provider contract and SearXNG adapter
+- [x] rendered Fetch primitive
+- [x] managed Browser session API
+- [x] typed Agent actions
 - [x] replaceable planner
-- [x] policy/approval gate
+- [x] policy/approval gate shared across Agent, Fetch and Browser
 - [x] local Chromium provider
 - [x] remote CDP provider
 - [x] CDP DOMSnapshot semantic graph
@@ -14,8 +17,9 @@
 - [x] bounded screenshot artifacts
 - [x] live Chromium screencast channel
 - [x] browser run inspector
-- [x] REST task API
-- [x] SSE events
+- [x] redacted trace storage
+- [x] checksum-backed run manifest export
+- [x] REST API and SSE events
 - [x] TypeScript SDK
 - [x] CLI
 - [x] tests and CI
@@ -26,14 +30,13 @@
 - iframe and shadow-root evaluation fixtures
 - durable task and artifact stores
 - explicit failure taxonomy and retry budgets
-- trace export / replay manifest
-- BrowserGym/WebArena evaluation harness
+- benchmark fixtures and BrowserGym/WebArena evaluation harness
+- persistent encrypted browser profiles
 
 ## v0.3 production
 
 - worker queue and concurrency controls
-- encrypted browser profiles
-- browser-provider adapters and hosted live-view metadata
-- observability/export format
+- hosted browser-provider adapters and viewer metadata
+- observability/export backends
 - policy plugins
 - MCP adapter

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - unreleased
+## 0.1.0 - unreleased\n\n- Added Search, rendered Fetch, managed Browser, and Agent as first-class primitives.\n- Added redacted execution traces and checksum-backed `owr.run.v1` exports.
 
 - Added provider-neutral agent runtime and typed browser action contract.
 - Added OpenAI-compatible planner adapter.
