@@ -75,7 +75,16 @@ jobs:
 
       - name: Start no-key MCP container
         run: |
-          docker run -d --name owr-smoke             -p 8787:8787             --shm-size=1g             -e HOST=0.0.0.0             -e PORT=8787             -e LLM_API_KEY=             -e HEADLESS=true             -e ALLOW_PRIVATE_NETWORKS=false             "${{ needs.publish.outputs.image }}"
+          docker run -d --name owr-smoke \
+            -p 8787:8787 \
+            --shm-size=1g \
+            -e HOST=0.0.0.0 \
+            -e PORT=8787 \
+            -e MCP_ONLY=true \
+            -e LLM_API_KEY= \
+            -e HEADLESS=true \
+            -e ALLOW_PRIVATE_NETWORKS=false \
+            "${{ needs.publish.outputs.image }}"
 
       - name: Wait for health
         run: |
@@ -90,7 +99,12 @@ jobs:
 
       - name: Verify MCP endpoint responds
         run: |
-          curl -sS -o /tmp/mcp.out -w "%{http_code}"             -X POST http://127.0.0.1:8787/mcp             -H 'content-type: application/json'             --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"container-smoke","version":"1.0.0"}}}'             | tee /tmp/mcp.status
+          curl -sS -o /tmp/mcp.out -w "%{http_code}" \
+            -X POST http://127.0.0.1:8787/mcp \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"container-smoke","version":"1.0.0"}}}' \
+            | tee /tmp/mcp.status
           grep -Eq '^(200|202)$' /tmp/mcp.status
           grep -q '"jsonrpc"' /tmp/mcp.out
 
