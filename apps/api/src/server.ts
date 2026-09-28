@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { browserProviderFromEnv } from "@owr/browser";
 import { AgentRuntime, OpenAICompatiblePlanner } from "@owr/core";
+import { inspectorHtml } from "./inspector.js";
 
 const planner = new OpenAICompatiblePlanner({
   baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
@@ -16,7 +17,8 @@ const runtime = new AgentRuntime(
   {
     maxSteps: Number(process.env.MAX_AGENT_STEPS ?? 20),
     allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true",
-    requireConfirmationForHighRisk: process.env.REQUIRE_CONFIRMATION_FOR_HIGH_RISK !== "false"
+    requireConfirmationForHighRisk: process.env.REQUIRE_CONFIRMATION_FOR_HIGH_RISK !== "false",
+    captureScreenshots: process.env.CAPTURE_SCREENSHOTS !== "false"
   }
 );
 
@@ -24,7 +26,22 @@ function json(res: ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
-    "content-length": Buffer.byteLength(body)
+    "content-length": Buffer.byteLength(body),
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff"
+  });
+  res.end(body);
+}
+
+function html(res: ServerResponse, body: string): void {
+  res.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+    "cache-control": "no-store",
+    "content-security-policy": "default-src 'self'; img-src 'self' blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer"
   });
   res.end(body);
 }
@@ -63,13 +80,26 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, version: "0.1.0" });
     }
 
+    const inspectorMatch = /^\/inspect\/([^/]+)$/.exec(url.pathname);
+    if (req.method === "GET" && inspectorMatch) {
+      return html(res, inspectorHtml(decodeURIComponent(inspectorMatch[1]!)));
+    }
+
     if (!authorized(req)) return unauthorized(res);
 
     if (req.method === "GET" && url.pathname === "/") {
       return json(res, 200, {
         name: "Open Web Runtime",
         version: "0.1.0",
-        endpoints: ["POST /v1/tasks", "GET /v1/tasks/:id", "GET /v1/tasks/:id/events", "POST /v1/tasks/:id/approval"]
+        endpoints: [
+          "POST /v1/tasks",
+          "GET /v1/tasks/:id",
+          "GET /v1/tasks/:id/events",
+          "GET /v1/tasks/:id/artifacts",
+          "GET /v1/artifacts/:id",
+          "POST /v1/tasks/:id/approval",
+          "GET /inspect/:id"
+        ]
       });
     }
 
@@ -84,13 +114,33 @@ const server = createServer(async (req, res) => {
       }
       const task = runtime.createTask({ goal: body.goal, startUrl });
       if (body.autoRun !== false) queueMicrotask(() => { void runtime.run(task.id); });
-      return json(res, 201, task);
+      return json(res, 201, {
+        ...task,
+        inspectorUrl: `/inspect/${encodeURIComponent(task.id)}`
+      });
     }
 
-    const taskMatch = /^\/v1\/tasks\/([^/]+)$/.exec(url.pathname);
-    if (req.method === "GET" && taskMatch) {
-      const task = runtime.store.get(taskMatch[1]!);
-      return task ? json(res, 200, task) : json(res, 404, { error: "Task not found" });
+    const artifactMatch = /^\/v1\/artifacts\/([^/]+)$/.exec(url.pathname);
+    if (req.method === "GET" && artifactMatch) {
+      const artifact = runtime.artifacts.get(artifactMatch[1]!);
+      if (!artifact) return json(res, 404, { error: "Artifact not found" });
+      const data = Buffer.from(artifact.data.buffer, artifact.data.byteOffset, artifact.data.byteLength);
+      res.writeHead(200, {
+        "content-type": artifact.metadata.mimeType,
+        "content-length": data.byteLength,
+        "cache-control": "no-store",
+        "content-disposition": "inline",
+        "x-content-type-options": "nosniff"
+      });
+      res.end(data);
+      return;
+    }
+
+    const artifactsMatch = /^\/v1\/tasks\/([^/]+)\/artifacts$/.exec(url.pathname);
+    if (req.method === "GET" && artifactsMatch) {
+      const taskId = artifactsMatch[1]!;
+      if (!runtime.store.get(taskId)) return json(res, 404, { error: "Task not found" });
+      return json(res, 200, runtime.artifacts.list(taskId));
     }
 
     const eventMatch = /^\/v1\/tasks\/([^/]+)\/events$/.exec(url.pathname);
@@ -102,7 +152,8 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, {
         "content-type": "text/event-stream; charset=utf-8",
         "cache-control": "no-cache, no-transform",
-        "connection": "keep-alive"
+        "connection": "keep-alive",
+        "x-content-type-options": "nosniff"
       });
       const send = (value: unknown) => res.write(`data: ${JSON.stringify(value)}\n\n`);
       send({ type: "task.snapshot", task });
@@ -127,6 +178,12 @@ const server = createServer(async (req, res) => {
       } catch (error) {
         return json(res, 409, { error: error instanceof Error ? error.message : String(error) });
       }
+    }
+
+    const taskMatch = /^\/v1\/tasks\/([^/]+)$/.exec(url.pathname);
+    if (req.method === "GET" && taskMatch) {
+      const task = runtime.store.get(taskMatch[1]!);
+      return task ? json(res, 200, task) : json(res, 404, { error: "Task not found" });
     }
 
     return json(res, 404, { error: "Not found" });
