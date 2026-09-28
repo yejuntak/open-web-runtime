@@ -177,7 +177,7 @@ function renderTask(task) {
     const detail = document.createElement("div");
     detail.className = "detail";
     const state = document.createElement("span");
-    state.textContent = step.ok ? "success" : "failed";
+    state.textContent = step.ok ? "success" : ("failed · " + ((step.failure && step.failure.code) || "unknown"));
     const duration = document.createElement("span");
     duration.textContent = String(step.durationMs) + "ms";
     const title = document.createElement("span");

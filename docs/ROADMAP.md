@@ -19,6 +19,7 @@
 - [x] browser run inspector
 - [x] redacted trace storage
 - [x] checksum-backed run manifest export
+- [x] structured failure taxonomy and planner recovery budget
 - [x] REST API and SSE events
 - [x] TypeScript SDK
 - [x] CLI
@@ -29,7 +30,6 @@
 - ambiguous-control identity disambiguation
 - iframe and shadow-root evaluation fixtures
 - durable task and artifact stores
-- explicit failure taxonomy and retry budgets
 - benchmark fixtures and BrowserGym/WebArena evaluation harness
 - persistent encrypted browser profiles
 

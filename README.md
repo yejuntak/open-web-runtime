@@ -40,7 +40,7 @@ Semantic Page Graph
 Trace / SSE / Result
 ```
 
-The planner never gets arbitrary JavaScript or a raw Playwright handle. It receives a bounded semantic graph and can return only the runtime action contract.
+The planner never gets arbitrary JavaScript or a raw Playwright handle. It receives a bounded semantic graph and can return only the runtime action contract. Failed actions are classified into structured failure codes; the planner may recover from a fresh observation, but the runtime stops after `MAX_CONSECUTIVE_ACTION_FAILURES` consecutive failures (default 3) rather than blindly replaying side-effecting actions.
 
 ## Four primitives
 

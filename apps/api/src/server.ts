@@ -19,6 +19,7 @@ const runtime = new AgentRuntime(
   undefined,
   {
     maxSteps: Number(process.env.MAX_AGENT_STEPS ?? 20),
+    maxConsecutiveActionFailures: Number(process.env.MAX_CONSECUTIVE_ACTION_FAILURES ?? 3),
     allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true",
     requireConfirmationForHighRisk: process.env.REQUIRE_CONFIRMATION_FOR_HIGH_RISK !== "false",
     captureScreenshots: process.env.CAPTURE_SCREENSHOTS !== "false",
