@@ -31,7 +31,43 @@ export class PlaywrightBrowserSession implements BrowserSession {
       animations: "disabled",
       caret: "hide"
     });
-    return { data: new Uint8Array(data), mimeType: "image/jpeg" };
+    return {
+      data: new Uint8Array(data),
+      mimeType: "image/jpeg",
+      capturedAt: new Date().toISOString(),
+      url: this.page.url()
+    };
+  }
+
+  async subscribeFrames(listener: (frame: BrowserFrame) => void): Promise<() => Promise<void>> {
+    const cdp = await this.protocol();
+    let active = true;
+    const handler = (event: { data: string; sessionId: number }) => {
+      if (active) {
+        listener({
+          data: new Uint8Array(Buffer.from(event.data, "base64")),
+          mimeType: "image/jpeg",
+          capturedAt: new Date().toISOString(),
+          url: this.page.url()
+        });
+      }
+      void cdp.send("Page.screencastFrameAck", { sessionId: event.sessionId }).catch(() => undefined);
+    };
+
+    cdp.on("Page.screencastFrame", handler);
+    await cdp.send("Page.startScreencast", {
+      format: "jpeg",
+      quality: 58,
+      maxWidth: 1600,
+      maxHeight: 900,
+      everyNthFrame: 2
+    });
+
+    return async () => {
+      active = false;
+      cdp.off("Page.screencastFrame", handler);
+      await cdp.send("Page.stopScreencast").catch(() => undefined);
+    };
   }
 
   private node(nodeId: string): SemanticNode {
