@@ -4,6 +4,7 @@ on:
   pull_request:
 permissions:
   contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,6 +18,19 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  mcp-no-key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: npm run test:mcp
+
   browser-e2e:
     runs-on: ubuntu-latest
     steps:
@@ -29,4 +43,3 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps --only-shell chromium
       - run: npm run test:e2e
-      - run: npm run test:mcp
