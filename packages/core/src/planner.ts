@@ -37,7 +37,8 @@ function compact(context: PlannerContext) {
       afterId: change.afterId,
       fields: change.fields,
       name: change.after.name,
-      value: change.fields.includes("value") ? change.after.value : undefined,
+      valuePresent: change.fields.includes("value") ? Boolean(change.after.value?.length) : undefined,
+      valueLength: change.fields.includes("value") ? (change.after.value?.length ?? 0) : undefined,
       disabled: change.after.disabled,
       actions: change.after.actions
     }))
@@ -56,6 +57,8 @@ function compact(context: PlannerContext) {
         role: node.role,
         name: node.name,
         text: node.text.slice(0, 160),
+        valuePresent: node.value !== undefined && node.value.length > 0,
+        valueLength: node.value?.length ?? 0,
         href: node.href,
         disabled: node.disabled,
         actions: node.actions

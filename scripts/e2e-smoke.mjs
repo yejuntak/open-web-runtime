@@ -130,7 +130,7 @@ const auxiliaryServer = createServer(async (req, res) => {
       let action;
       if (title === "Submitted" || String(context?.page?.textPreview ?? "").includes("Submitted:")) {
         action = { type: "complete", result: { ok: true }, summary: "fixture submitted" };
-      } else if (email && email.value !== smokeEmail) {
+      } else if (email && email.valueLength !== smokeEmail.length) {
         action = { type: "type", nodeId: email.id, text: smokeEmail, submit: false };
       } else if (submit) {
         action = { type: "click", nodeId: submit.id };
