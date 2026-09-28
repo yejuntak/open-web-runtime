@@ -3,17 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false",
     "test": "tsx --test packages/*/test/*.test.ts",
-    "dev": "tsx apps/api/src/server.ts"
+    "dev": "tsx apps/api/src/server.ts",
+    "test:e2e": "node scripts/e2e-smoke.mjs"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "playwright": "^1.55.0"
   }
 }
