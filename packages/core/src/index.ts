@@ -1,4 +1,5 @@
 export * from "./artifacts.js";
+export * from "./browser-registry.js";
 export * from "./diff.js";
 export * from "./events.js";
 export * from "./fetcher.js";
