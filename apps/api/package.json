@@ -1,0 +1,12 @@
+{
+  "name": "@owr/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": { "build": "tsc -b", "dev": "tsx src/server.ts" },
+  "dependencies": {
+    "@owr/core": "0.1.0",
+    "@owr/browser": "0.1.0"
+  }
+}
