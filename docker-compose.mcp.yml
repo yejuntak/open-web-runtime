@@ -6,6 +6,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 8787
+      MCP_ONLY: "true"
       HEADLESS: "true"
       LLM_API_KEY: ""
       ALLOW_PRIVATE_NETWORKS: "false"

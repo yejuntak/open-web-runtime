@@ -61,6 +61,7 @@ LLM_BASE_URL
 Recommended runtime variables:
 
 ```text
+MCP_ONLY=true
 HEADLESS=true
 ALLOW_PRIVATE_NETWORKS=false
 MAX_BROWSER_SESSIONS=4

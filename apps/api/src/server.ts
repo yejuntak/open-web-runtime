@@ -12,6 +12,7 @@ const planner = new OpenAICompatiblePlanner({
   apiMode: process.env.LLM_API_MODE === "chat_completions" ? "chat_completions" : "responses"
 });
 
+const mcpOnly = process.env.MCP_ONLY === "true";
 const browserProvider = browserProviderFromEnv();
 
 const runtime = new AgentRuntime(
@@ -98,7 +99,11 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return json(res, 200, { ok: true, version: "0.1.0" });
+      return json(res, 200, { ok: true, version: "0.1.0", mode: mcpOnly ? "mcp-only" : "full" });
+    }
+
+    if (mcpOnly && url.pathname !== "/mcp") {
+      return json(res, 404, { error: "MCP-only mode exposes only /health and /mcp" });
     }
 
     const inspectorMatch = /^\/inspect\/([^/]+)$/.exec(url.pathname);
