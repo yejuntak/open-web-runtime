@@ -4,6 +4,7 @@ export type NodeAction = "click" | "type" | "select" | "focus";
 
 export type SemanticNode = {
   id: string;
+  semanticKey?: string;
   role: string;
   name: string;
   tag: string;
@@ -23,6 +24,39 @@ export type PageObservation = {
   nodes: SemanticNode[];
   textPreview: string;
   accessibilitySummary: Array<{ role: string; name: string; disabled?: boolean }>;
+};
+
+export type SemanticNodeSummary = {
+  id: string;
+  semanticKey: string;
+  role: string;
+  name: string;
+  tag: string;
+  text: string;
+  value?: string;
+  href?: string;
+  disabled: boolean;
+  visible: boolean;
+  actions: NodeAction[];
+};
+
+export type SemanticNodeChange = {
+  semanticKey: string;
+  beforeId: string;
+  afterId: string;
+  fields: string[];
+  after: SemanticNodeSummary;
+};
+
+export type ObservationDiff = {
+  from: { url: string; title: string };
+  to: { url: string; title: string };
+  urlChanged: boolean;
+  titleChanged: boolean;
+  added: SemanticNodeSummary[];
+  removed: SemanticNodeSummary[];
+  changed: SemanticNodeChange[];
+  unchangedCount: number;
 };
 
 export type AgentAction =
@@ -146,5 +180,12 @@ export interface BrowserSession {
 
 export interface BrowserProvider { createSession(): Promise<BrowserSession> }
 
-export type PlannerContext = { goal: string; step: number; observation: PageObservation; history: StepRecord[] };
+export type PlannerContext = {
+  goal: string;
+  step: number;
+  observation: PageObservation;
+  diff?: ObservationDiff;
+  history: StepRecord[];
+};
+
 export interface Planner { next(context: PlannerContext): Promise<AgentAction> }

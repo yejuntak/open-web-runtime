@@ -1,5 +1,5 @@
 export * from "./artifacts.js";
-export * from "./events.js";
+export * from "./diff.js";\nexport * from "./events.js";
 export * from "./planner.js";
 export * from "./policy.js";
 export * from "./runner.js";

@@ -1,5 +1,5 @@
 import type { CDPSession, Page } from "playwright-core";
-import type { PageObservation, SemanticNode } from "@owr/core";
+import { semanticKeyForNode, type PageObservation, type SemanticNode } from "@owr/core";
 
 const MAX_NODES = 180;
 const MAX_TEXT_PREVIEW = 9000;
@@ -176,7 +176,7 @@ export function buildSemanticPageGraph(input: {
       const value = valueIndex === undefined ? attrs.value : stringAt(input.snapshot.strings, valueIndex);
       const href = absoluteHref(attrs.href, input.url);
 
-      nodes.push({
+      const semanticNode: SemanticNode = {
         id: `b${backendNodeId}`,
         role,
         name: semanticName(attrs, axNode, nodeText),
@@ -188,7 +188,9 @@ export function buildSemanticPageGraph(input: {
         visible,
         ...(bounds ? { bbox: { x: bounds[0]!, y: bounds[1]!, width: bounds[2]!, height: bounds[3]! } } : {}),
         actions: actionsFor(tag, role, attrs, disabled, isClickable)
-      });
+      };
+      semanticNode.semanticKey = semanticKeyForNode(semanticNode);
+      nodes.push(semanticNode);
     }
   }
 

@@ -15,11 +15,34 @@ Allowed actions:
 {"type":"complete","result":...,"summary":"..."}
 
 Never invent node IDs. Use only semantic node IDs in the current observation.
+The changeSummary describes state changes since the previous planning step. Treat it as evidence, not as a separate source of actionable node IDs.
 Prefer semantic controls. Do not repeat failed actions without evidence the state changed.
 If the goal is satisfied, complete immediately.
 Do not output chain-of-thought.`;
 
 function compact(context: PlannerContext) {
+  const changeSummary = context.diff ? {
+    urlChanged: context.diff.urlChanged,
+    titleChanged: context.diff.titleChanged,
+    unchangedCount: context.diff.unchangedCount,
+    added: context.diff.added.slice(0, 40).map(node => ({
+      id: node.id, semanticKey: node.semanticKey, role: node.role, name: node.name, disabled: node.disabled, actions: node.actions
+    })),
+    removed: context.diff.removed.slice(0, 40).map(node => ({
+      semanticKey: node.semanticKey, role: node.role, name: node.name
+    })),
+    changed: context.diff.changed.slice(0, 40).map(change => ({
+      semanticKey: change.semanticKey,
+      beforeId: change.beforeId,
+      afterId: change.afterId,
+      fields: change.fields,
+      name: change.after.name,
+      value: change.fields.includes("value") ? change.after.value : undefined,
+      disabled: change.after.disabled,
+      actions: change.after.actions
+    }))
+  } : undefined;
+
   return {
     goal: context.goal,
     step: context.step,
@@ -28,10 +51,17 @@ function compact(context: PlannerContext) {
       title: context.observation.title,
       textPreview: context.observation.textPreview.slice(0, 6000),
       nodes: context.observation.nodes.slice(0, 140).map(node => ({
-        id: node.id, role: node.role, name: node.name, text: node.text.slice(0, 280),
-        value: node.value, href: node.href, disabled: node.disabled, actions: node.actions
+        id: node.id,
+        semanticKey: node.semanticKey,
+        role: node.role,
+        name: node.name,
+        text: node.text.slice(0, 160),
+        href: node.href,
+        disabled: node.disabled,
+        actions: node.actions
       }))
     },
+    changeSummary,
     recentHistory: context.history.slice(-6).map(step => ({
       step: step.step, action: step.action, ok: step.ok, error: step.error, after: step.after
     }))

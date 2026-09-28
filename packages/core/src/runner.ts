@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { InMemoryArtifactStore } from "./artifacts.js";
-import { RuntimeEventBus } from "./events.js";
+import { diffObservations } from "./diff.js";\nimport { RuntimeEventBus } from "./events.js";
 import { actionPolicy, navigationPolicy } from "./policy.js";
 import { InMemoryTaskStore } from "./store.js";
 import type { BrowserProvider, BrowserSession, PageObservation, Planner, StepRecord, TaskRecord } from "./types.js";
