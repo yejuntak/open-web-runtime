@@ -1,6 +1,14 @@
 import { parseAgentAction, type AgentAction, type Planner, type PlannerContext } from "./types.js";
 
-export type OpenAICompatiblePlannerOptions = { baseUrl: string; apiKey: string; model: string };
+export type PlannerApiMode = "responses" | "chat_completions";
+
+export type OpenAICompatiblePlannerOptions = {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  apiMode?: PlannerApiMode;
+  fetchImpl?: typeof fetch;
+};
 
 const SYSTEM_PROMPT = `You are a browser execution planner.
 Return exactly one JSON object and no prose.
@@ -16,6 +24,7 @@ Allowed actions:
 
 Never invent node IDs. Use only semantic node IDs in the current observation.
 The changeSummary describes state changes since the previous planning step. Treat it as evidence, not as a separate source of actionable node IDs.
+Input values are represented only by presence/length metadata unless they are visible as normal page text.
 Prefer semantic controls. Do not repeat failed actions without evidence the state changed.
 If the goal is satisfied, complete immediately.
 Do not output chain-of-thought.`;
@@ -71,27 +80,81 @@ function compact(context: PlannerContext) {
   };
 }
 
+function stripFence(raw: string): string {
+  return raw.trim().replace(/^\x60\x60\x60(?:json)?\s*/i, "").replace(/\s*\x60\x60\x60$/, "");
+}
+
+function responseOutputText(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== "object") return undefined;
+  const record = payload as {
+    output_text?: unknown;
+    output?: Array<{ content?: Array<{ type?: unknown; text?: unknown }> }>;
+  };
+  if (typeof record.output_text === "string" && record.output_text.trim()) return record.output_text.trim();
+  for (const item of record.output ?? []) {
+    for (const content of item.content ?? []) {
+      if ((content.type === "output_text" || content.type === "text") && typeof content.text === "string" && content.text.trim()) {
+        return content.text.trim();
+      }
+    }
+  }
+  return undefined;
+}
+
 export class OpenAICompatiblePlanner implements Planner {
-  constructor(private options: OpenAICompatiblePlannerOptions) {}
+  private fetchImpl: typeof fetch;
+  private apiMode: PlannerApiMode;
+
+  constructor(private options: OpenAICompatiblePlannerOptions) {
+    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.apiMode = options.apiMode ?? "responses";
+  }
 
   async next(context: PlannerContext): Promise<AgentAction> {
     if (!this.options.apiKey) throw new Error("LLM_API_KEY is required");
-    const response = await fetch(`${this.options.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${this.options.apiKey}` },
-      body: JSON.stringify({
-        model: this.options.model,
-        temperature: 0,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: JSON.stringify(compact(context)) }
-        ]
-      })
-    });
+    const baseUrl = this.options.baseUrl.replace(/\/$/, "");
+    const state = JSON.stringify(compact(context));
+
+    let response: Response;
+    if (this.apiMode === "responses") {
+      response = await this.fetchImpl(`${baseUrl}/responses`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${this.options.apiKey}` },
+        body: JSON.stringify({
+          model: this.options.model,
+          input: [
+            { role: "system", content: [{ type: "input_text", text: SYSTEM_PROMPT }] },
+            { role: "user", content: [{ type: "input_text", text: state }] }
+          ]
+        })
+      });
+    } else {
+      response = await this.fetchImpl(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${this.options.apiKey}` },
+        body: JSON.stringify({
+          model: this.options.model,
+          temperature: 0,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: state }
+          ]
+        })
+      });
+    }
+
     if (!response.ok) throw new Error(`Planner HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-    const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const raw = payload.choices?.[0]?.message?.content?.trim();
+    const payload = await response.json() as unknown;
+
+    let raw: string | undefined;
+    if (this.apiMode === "responses") {
+      raw = responseOutputText(payload);
+    } else {
+      const chat = payload as { choices?: Array<{ message?: { content?: string } }> };
+      raw = chat.choices?.[0]?.message?.content?.trim();
+    }
+
     if (!raw) throw new Error("Planner returned no action");
-    return parseAgentAction(JSON.parse(raw.replace(/^\x60\x60\x60(?:json)?\s*/i, "").replace(/\s*\x60\x60\x60$/, "")));
+    return parseAgentAction(JSON.parse(stripFence(raw)));
   }
 }

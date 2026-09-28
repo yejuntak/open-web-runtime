@@ -118,9 +118,11 @@ const auxiliaryServer = createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "POST" && url.pathname === "/chat/completions") {
+    if (req.method === "POST" && (url.pathname === "/chat/completions" || url.pathname === "/responses")) {
       const body = await readJson(req);
-      const userMessage = body?.messages?.at?.(-1)?.content;
+      const chatMessage = body?.messages?.at?.(-1)?.content;
+      const responseMessage = body?.input?.at?.(-1)?.content?.find?.(item => item?.type === "input_text")?.text;
+      const userMessage = typeof chatMessage === "string" ? chatMessage : responseMessage;
       const context = JSON.parse(typeof userMessage === "string" ? userMessage : "{}");
       const nodes = Array.isArray(context?.page?.nodes) ? context.page.nodes : [];
       const title = String(context?.page?.title ?? "");
@@ -139,7 +141,13 @@ const auxiliaryServer = createServer(async (req, res) => {
       }
 
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(action) } }] }));
+      if (url.pathname === "/responses") {
+        res.end(JSON.stringify({
+          output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(action) }] }]
+        }));
+      } else {
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(action) } }] }));
+      }
       return;
     }
 
@@ -169,6 +177,7 @@ try {
       LLM_BASE_URL: auxiliaryBase,
       LLM_API_KEY: "smoke-key",
       LLM_MODEL: "smoke-model",
+      LLM_API_MODE: "responses",
       SEARXNG_BASE_URL: auxiliaryBase,
       ALLOW_PRIVATE_NETWORKS: "true",
       CAPTURE_SCREENSHOTS: "true",

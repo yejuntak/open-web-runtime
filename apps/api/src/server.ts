@@ -7,7 +7,8 @@ import { inspectorHtml } from "./inspector.js";
 const planner = new OpenAICompatiblePlanner({
   baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
   apiKey: process.env.LLM_API_KEY ?? "",
-  model: process.env.LLM_MODEL ?? "gpt-5.6"
+  model: process.env.LLM_MODEL ?? "gpt-5.6",
+  apiMode: process.env.LLM_API_MODE === "chat_completions" ? "chat_completions" : "responses"
 });
 
 const browserProvider = browserProviderFromEnv();

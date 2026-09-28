@@ -122,8 +122,17 @@ Set at minimum:
 
 ```bash
 LLM_API_KEY=...
-CHROME_EXECUTABLE_PATH=/path/to/chrome
 ```
+
+For the default OpenAI configuration, `LLM_API_MODE=responses` and `LLM_MODEL=gpt-5.6` are used. Current OpenAI flagship models are documented for the Responses API. For providers exposing the older OpenAI-compatible Chat Completions surface, set:
+
+```bash
+LLM_API_MODE=chat_completions
+LLM_BASE_URL=https://your-provider.example/v1
+LLM_MODEL=your-model
+```
+
+For local browser execution you can either install the Playwright-managed Chromium with `npx playwright install chromium`, or set `CHROME_EXECUTABLE_PATH` to an existing compatible Chrome/Chromium binary.
 
 Then:
 
