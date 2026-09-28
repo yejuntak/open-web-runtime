@@ -1,3 +1,4 @@
+import { redactAgentAction } from "./trace.js";
 import type { AgentAction, TaskRecord } from "./types.js";
 
 export class InMemoryTaskStore {
@@ -25,7 +26,7 @@ export class InMemoryTaskStore {
   waitForApproval(taskId: string, action: AgentAction, reason: string): Promise<boolean> {
     this.update(taskId, task => {
       task.status = "waiting_for_approval";
-      task.approval = { action, reason };
+      task.approval = { action: redactAgentAction(action), reason };
     });
     return new Promise(resolve => this.approvals.set(taskId, resolve));
   }

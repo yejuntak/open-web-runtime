@@ -130,9 +130,9 @@ async function api(path, options) {
 
 function actionLabel(action) {
   if (!action) return "unknown";
-  if (action.type === "type") return "type " + action.nodeId + " [" + String(action.text || "").length + " chars]" + (action.submit ? " + submit" : "");
+  if (action.type === "type") return "type " + action.nodeId + " [" + String(action.textLength !== undefined ? action.textLength : String(action.text || "").length) + " chars]" + (action.submit ? " + submit" : "");
   if (action.type === "click") return "click " + action.nodeId;
-  if (action.type === "select") return "select " + action.nodeId;
+  if (action.type === "select") return "select " + action.nodeId + (action.valueLength !== undefined ? " [" + action.valueLength + " chars]" : "");
   if (action.type === "navigate") {
     try { return "navigate " + new URL(action.url).origin; } catch { return "navigate"; }
   }

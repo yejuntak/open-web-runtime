@@ -109,9 +109,19 @@ export function parseAgentAction(value: unknown): AgentAction {
   }
 }
 
+export type RecordedAgentAction =
+  | { type: "navigate"; url: string }
+  | { type: "click"; nodeId: string }
+  | { type: "type"; nodeId: string; textLength: number; submit: boolean }
+  | { type: "select"; nodeId: string; valueLength: number }
+  | { type: "press"; key: string }
+  | { type: "scroll"; direction: "up" | "down"; amount: number }
+  | { type: "wait"; ms: number }
+  | { type: "complete"; summary?: string };
+
 export type StepRecord = {
   step: number;
-  action: AgentAction;
+  action: RecordedAgentAction;
   before: Pick<PageObservation, "url" | "title">;
   after?: Pick<PageObservation, "url" | "title">;
   ok: boolean;
@@ -163,7 +173,7 @@ export type TaskRecord = {
   error?: string;
   steps: StepRecord[];
   browser?: { backend: string; debugUrl?: string };
-  approval?: { reason: string; action: AgentAction };
+  approval?: { reason: string; action: RecordedAgentAction };
   latestArtifactId?: string;
   artifactCount?: number;
 };
@@ -172,10 +182,10 @@ export type RuntimeEvent =
   | { type: "task.created"; taskId: string; at: string }
   | { type: "browser.ready"; taskId: string; at: string; backend: string; debugUrl?: string }
   | { type: "artifact.created"; taskId: string; at: string; artifact: ArtifactMetadata }
-  | { type: "step.started"; taskId: string; at: string; step: number; action: AgentAction }
+  | { type: "step.started"; taskId: string; at: string; step: number; action: RecordedAgentAction }
   | { type: "step.completed"; taskId: string; at: string; step: number; url: string; title: string; durationMs: number }
   | { type: "step.failed"; taskId: string; at: string; step: number; error: string; durationMs: number }
-  | { type: "task.waiting_for_approval"; taskId: string; at: string; reason: string; action: AgentAction }
+  | { type: "task.waiting_for_approval"; taskId: string; at: string; reason: string; action: RecordedAgentAction }
   | { type: "task.completed"; taskId: string; at: string; result: unknown }
   | { type: "task.cancelled"; taskId: string; at: string; reason: string }
   | { type: "task.failed"; taskId: string; at: string; error: string };

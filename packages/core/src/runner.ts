@@ -4,6 +4,7 @@ import { diffObservations } from "./diff.js";
 import { RuntimeEventBus } from "./events.js";
 import { actionPolicy, navigationPolicy } from "./policy.js";
 import { InMemoryTaskStore } from "./store.js";
+import { redactAgentAction } from "./trace.js";
 import type { BrowserProvider, BrowserSession, PageObservation, Planner, StepRecord, TaskRecord } from "./types.js";
 
 export type AgentRuntimeOptions = {
@@ -119,7 +120,7 @@ export class AgentRuntime {
         if (policy.kind === "deny") throw new Error(policy.reason);
         if (policy.kind === "confirm") {
           await this.capture(taskId, browser, "approval", observation, step);
-          this.events.emit({ type: "task.waiting_for_approval", taskId, at: new Date().toISOString(), reason: policy.reason, action });
+          this.events.emit({ type: "task.waiting_for_approval", taskId, at: new Date().toISOString(), reason: policy.reason, action: redactAgentAction(action) });
           const approved = await this.store.waitForApproval(taskId, action, policy.reason);
           if (!approved) {
             const reason = "Action was not approved.";
@@ -128,7 +129,7 @@ export class AgentRuntime {
           }
         }
 
-        this.events.emit({ type: "step.started", taskId, at: new Date().toISOString(), step, action });
+        this.events.emit({ type: "step.started", taskId, at: new Date().toISOString(), step, action: redactAgentAction(action) });
         const started = performance.now();
         let record: StepRecord;
         try {
@@ -136,7 +137,7 @@ export class AgentRuntime {
           const after = await browser.observe();
           await this.capture(taskId, browser, `after:${action.type}`, after, step);
           const durationMs = Math.round(performance.now() - started);
-          record = { step, action, before: { url: observation.url, title: observation.title }, after: { url: after.url, title: after.title }, ok: true, durationMs };
+          record = { step, action: redactAgentAction(action), before: { url: observation.url, title: observation.title }, after: { url: after.url, title: after.title }, ok: true, durationMs };
           this.events.emit({ type: "step.completed", taskId, at: new Date().toISOString(), step, url: after.url, title: after.title, durationMs });
         } catch (error) {
           const durationMs = Math.round(performance.now() - started);

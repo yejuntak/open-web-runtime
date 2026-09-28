@@ -5,4 +5,5 @@ export * from "./planner.js";
 export * from "./policy.js";
 export * from "./runner.js";
 export * from "./store.js";
+export * from "./trace.js";
 export * from "./types.js";
