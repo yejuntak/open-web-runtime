@@ -25,6 +25,10 @@ const runtime = new AgentRuntime(
   }
 );
 
+const webFetcher = new WebFetcher(browserProvider, {
+  allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === "true"
+});
+
 function json(res: ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
   res.writeHead(status, {
