@@ -119,7 +119,7 @@ This is the intended TinyFish-replacement path. ChatGPT or Codex is the planner;
 
 For this mode, leave `LLM_API_KEY` empty. Start the runtime, expose it through a stable HTTPS endpoint or Secure MCP Tunnel, then connect that HTTPS `/mcp` URL once in ChatGPT developer mode. After the plugin is connected, the host model can call `web_fetch`, `web_search`, and the `browser_*` tools directly.
 
-The repository includes `plugin.json`, `skills/open-web-browser/SKILL.md`, and `mcp.example.json` as the portable plugin package starting point.
+The repository includes `plugin.json`, `skills/open-web-browser/SKILL.md`, and `mcp.example.json` as the portable plugin package starting point. Deployment and ChatGPT connection steps are in [`docs/DEPLOY_CHATGPT.md`](./docs/DEPLOY_CHATGPT.md).
 
 ## Standalone Agent mode — optional API key
 
