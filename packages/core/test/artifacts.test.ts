@@ -25,3 +25,16 @@ test("artifact store rejects oversized artifacts", () => {
     /exceeds/
   );
 });
+
+test("live frame channel keeps only the newest frame and increments sequence", () => {
+  const store = new InMemoryArtifactStore(2, 100);
+  const first = store.setLiveFrame("t1", { data: new Uint8Array([1]), mimeType: "image/jpeg", capturedAt: "2026-09-28T00:00:00.000Z" });
+  const second = store.setLiveFrame("t1", { data: new Uint8Array([2, 3]), mimeType: "image/jpeg", capturedAt: "2026-09-28T00:00:01.000Z" });
+
+  assert.equal(first.sequence, 1);
+  assert.equal(second.sequence, 2);
+  assert.deepEqual([...store.getLiveFrame("t1")!.data], [2, 3]);
+
+  store.clearLiveFrame("t1");
+  assert.equal(store.getLiveFrame("t1"), undefined);
+});

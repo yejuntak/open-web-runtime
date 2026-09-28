@@ -13,3 +13,12 @@ Default protections:
 Do not expose the API directly to the public internet without authentication, tenancy isolation, rate limits, and an outbound network policy.
 
 Report security issues privately to the repository owner rather than opening a public issue.
+
+## Browser images
+
+When enabled, the inspector can expose browser content through two channels:
+
+- live screencast frames: only the newest frame is held in memory and is removed when execution ends;
+- screenshot artifacts: bounded per task, but retained in memory for later inspection.
+
+Both can contain credentials, personal information, or other sensitive page content even when structured traces avoid recording form values. Disable them with `LIVE_FRAMES=false` and/or `CAPTURE_SCREENSHOTS=false` for sensitive workloads. Production deployments should replace the in-memory artifact store with an encrypted, access-controlled backend and explicit retention policy.

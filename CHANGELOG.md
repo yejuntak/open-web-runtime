@@ -9,5 +9,5 @@
 - Added semantic page graph capture using CDP DOMSnapshot, accessibility semantics, and layout bounds.
 - Added REST task API, SSE progress events, and approval endpoint.
 - Added optional bearer-token API protection.
-- Added TypeScript SDK and command-line client.
+- Added TypeScript SDK and command-line client.\n- Added bounded screenshot artifacts and a live Chromium screencast inspector.\n- Added semantic page diffs with conservative cross-observation control matching.
 - Added Docker deployment, tests, CI, security, clean-room, and third-party provenance documentation.

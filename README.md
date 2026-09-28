@@ -115,6 +115,23 @@ Fetch state:
 curl http://localhost:8787/v1/tasks/<task-id>
 ```
 
+## Live inspector
+
+Open:
+
+```text
+http://localhost:8787/inspect/<task-id>
+```
+
+The inspector shows the latest Chromium screencast frame, browser backend, run result, step trace, and human-approval controls. Live frames are ephemeral: only the newest screencast frame is kept in memory. Step screenshots are stored separately in a bounded in-memory artifact store.
+
+Disable either channel when handling sensitive workflows:
+
+```bash
+LIVE_FRAMES=false
+CAPTURE_SCREENSHOTS=false
+```
+
 Stream events:
 
 ```bash

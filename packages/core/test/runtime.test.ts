@@ -70,3 +70,29 @@ test("runtime records bounded screenshot artifacts when the browser supports fra
   assert.equal(result.artifactCount, 2);
   assert.equal(result.latestArtifactId, artifacts[1]?.id);
 });
+
+test("runtime stops and clears a live frame subscription", async () => {
+  let stopped = false;
+  const provider: BrowserProvider = {
+    async createSession() {
+      return {
+        backend: "fake",
+        async observe() { return observation; },
+        async execute() {},
+        async subscribeFrames(listener) {
+          listener({ data: new Uint8Array([9]), mimeType: "image/jpeg" });
+          return async () => { stopped = true; };
+        },
+        async close() {}
+      };
+    }
+  };
+  const planner: Planner = { async next() { return { type: "complete", result: "done" }; } };
+  const runtime = new AgentRuntime(provider, planner, undefined, undefined, { maxSteps: 1, captureScreenshots: false, liveFrames: true });
+  const task = runtime.createTask({ goal: "live" });
+
+  await runtime.run(task.id);
+
+  assert.equal(stopped, true);
+  assert.equal(runtime.artifacts.getLiveFrame(task.id), undefined);
+});
