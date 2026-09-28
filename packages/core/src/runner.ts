@@ -11,6 +11,7 @@ export type AgentRuntimeOptions = {
   allowPrivateNetworks?: boolean;
   requireConfirmationForHighRisk?: boolean;
   captureScreenshots?: boolean;
+  liveFrames?: boolean;
 };
 
 export class AgentRuntime {
@@ -74,6 +75,17 @@ export class AgentRuntime {
     this.store.update(taskId, record => { record.browser = { backend: browser.backend, debugUrl: browser.debugUrl }; });
     this.events.emit({ type: "browser.ready", taskId, at: new Date().toISOString(), backend: browser.backend, debugUrl: browser.debugUrl });
 
+    let stopLiveFrames: (() => void | Promise<void>) | undefined;
+    if (this.options.liveFrames !== false && browser.subscribeFrames) {
+      try {
+        stopLiveFrames = await browser.subscribeFrames(frame => {
+          try { this.artifacts.setLiveFrame(taskId, frame); } catch { /* live view is best-effort */ }
+        });
+      } catch {
+        stopLiveFrames = undefined;
+      }
+    }
+
     try {
       if (task.startUrl) {
         const policy = navigationPolicy(task.startUrl, this.options.allowPrivateNetworks);
@@ -82,12 +94,14 @@ export class AgentRuntime {
       }
 
       const maxSteps = this.options.maxSteps ?? 20;
+      let previousObservation: PageObservation | undefined;
       for (let step = 1; step <= maxSteps; step += 1) {
         const observation = await browser.observe();
         await this.capture(taskId, browser, step === 1 ? "initial" : "observe", observation, step);
 
         const current = this.store.get(taskId)!;
-        const action = await this.planner.next({ goal: current.goal, step, observation, history: current.steps });
+        const diff = previousObservation ? diffObservations(previousObservation, observation) : undefined;
+        const action = await this.planner.next({ goal: current.goal, step, observation, diff, history: current.steps });
 
         if (action.type === "complete") {
           await this.capture(taskId, browser, "complete", observation, step);
@@ -131,6 +145,7 @@ export class AgentRuntime {
           this.events.emit({ type: "step.failed", taskId, at: new Date().toISOString(), step, error: message, durationMs });
         }
         this.store.update(taskId, recordTask => { recordTask.steps.push(record); });
+        previousObservation = observation;
       }
       throw new Error(`Maximum step count (${maxSteps}) reached without completion.`);
     } catch (error) {
@@ -139,6 +154,8 @@ export class AgentRuntime {
       this.events.emit({ type: "task.failed", taskId, at: new Date().toISOString(), error: message });
       return this.store.get(taskId)!;
     } finally {
+      if (stopLiveFrames) await Promise.resolve(stopLiveFrames()).catch(() => undefined);
+      this.artifacts.clearLiveFrame(taskId);
       await browser.close().catch(() => undefined);
     }
   }

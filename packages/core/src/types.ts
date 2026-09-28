@@ -137,6 +137,17 @@ export type ArtifactMetadata = {
 export type BrowserFrame = {
   data: Uint8Array;
   mimeType: string;
+  capturedAt?: string;
+  url?: string;
+};
+
+export type LiveFrameMetadata = {
+  taskId: string;
+  sequence: number;
+  mimeType: string;
+  byteLength: number;
+  capturedAt: string;
+  url?: string;
 };
 
 export type TaskStatus = "queued" | "running" | "waiting_for_approval" | "completed" | "failed" | "cancelled";
@@ -175,6 +186,7 @@ export interface BrowserSession {
   observe(): Promise<PageObservation>;
   execute(action: AgentAction): Promise<void>;
   screenshot?(): Promise<BrowserFrame>;
+  subscribeFrames?(listener: (frame: BrowserFrame) => void): Promise<() => void | Promise<void>>;
   close(): Promise<void>;
 }
 

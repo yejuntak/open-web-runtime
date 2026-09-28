@@ -1,14 +1,20 @@
 import { randomUUID } from "node:crypto";
-import type { ArtifactMetadata, ArtifactKind } from "./types.js";
+import type { ArtifactMetadata, ArtifactKind, BrowserFrame, LiveFrameMetadata } from "./types.js";
 
 type StoredArtifact = {
   metadata: ArtifactMetadata;
   data: Uint8Array;
 };
 
+type StoredLiveFrame = {
+  metadata: LiveFrameMetadata;
+  data: Uint8Array;
+};
+
 export class InMemoryArtifactStore {
   private artifacts = new Map<string, StoredArtifact>();
   private byTask = new Map<string, string[]>();
+  private liveFrames = new Map<string, StoredLiveFrame>();
 
   constructor(
     readonly maxArtifactsPerTask = 30,
@@ -67,5 +73,33 @@ export class InMemoryArtifactStore {
     return value
       ? { metadata: structuredClone(value.metadata), data: new Uint8Array(value.data) }
       : undefined;
+  }
+
+  setLiveFrame(taskId: string, frame: BrowserFrame): LiveFrameMetadata {
+    if (frame.data.byteLength > this.maxArtifactBytes) {
+      throw new Error(`Live frame exceeds ${this.maxArtifactBytes} bytes`);
+    }
+    const previous = this.liveFrames.get(taskId);
+    const metadata: LiveFrameMetadata = {
+      taskId,
+      sequence: (previous?.metadata.sequence ?? 0) + 1,
+      mimeType: frame.mimeType,
+      byteLength: frame.data.byteLength,
+      capturedAt: frame.capturedAt ?? new Date().toISOString(),
+      ...(frame.url ? { url: frame.url } : {})
+    };
+    this.liveFrames.set(taskId, { metadata, data: new Uint8Array(frame.data) });
+    return structuredClone(metadata);
+  }
+
+  getLiveFrame(taskId: string): { metadata: LiveFrameMetadata; data: Uint8Array } | undefined {
+    const value = this.liveFrames.get(taskId);
+    return value
+      ? { metadata: structuredClone(value.metadata), data: new Uint8Array(value.data) }
+      : undefined;
+  }
+
+  clearLiveFrame(taskId: string): void {
+    this.liveFrames.delete(taskId);
   }
 }
