@@ -12,6 +12,8 @@ function usage(): never {
 Usage:
   owr run --goal "..." [--url https://example.com]
   owr get --task <id>
+  owr inspect --task <id>
+  owr artifacts --task <id>
   owr approve --task <id>
   owr deny --task <id>
 
@@ -39,6 +41,7 @@ if (command === "run") {
     autoRun: true
   });
   console.error(`task ${task.id}`);
+  console.error(`inspect ${client.inspectorUrl(task.id)}`);
   const final = await waitForTask(client, task.id);
   console.log(JSON.stringify(final, null, 2));
   process.exit(final.status === "completed" ? 0 : final.status === "waiting_for_approval" ? 3 : 1);
@@ -48,6 +51,20 @@ if (command === "get") {
   const taskId = value("--task");
   if (!taskId) usage();
   console.log(JSON.stringify(await client.getTask(taskId), null, 2));
+  process.exit(0);
+}
+
+if (command === "inspect") {
+  const taskId = value("--task");
+  if (!taskId) usage();
+  console.log(client.inspectorUrl(taskId));
+  process.exit(0);
+}
+
+if (command === "artifacts") {
+  const taskId = value("--task");
+  if (!taskId) usage();
+  console.log(JSON.stringify(await client.listArtifacts(taskId), null, 2));
   process.exit(0);
 }
 

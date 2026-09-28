@@ -42,3 +42,31 @@ test("runtime executes a typed action and completes", async () => {
   assert.deepEqual(result.result, { ok: true });
   assert.equal(executed[0]?.type, "wait");
 });
+
+test("runtime records bounded screenshot artifacts when the browser supports frames", async () => {
+  const provider: BrowserProvider = {
+    async createSession() {
+      return {
+        backend: "fake",
+        async observe() { return observation; },
+        async execute() {},
+        async screenshot() { return { data: new Uint8Array([1, 2, 3]), mimeType: "image/jpeg" }; },
+        async close() {}
+      };
+    }
+  };
+
+  const planner: Planner = {
+    async next() { return { type: "complete", result: "done" }; }
+  };
+
+  const runtime = new AgentRuntime(provider, planner, undefined, undefined, { maxSteps: 1, captureScreenshots: true });
+  const task = runtime.createTask({ goal: "capture" });
+  const result = await runtime.run(task.id);
+  const artifacts = runtime.artifacts.list(task.id);
+
+  assert.equal(result.status, "completed");
+  assert.equal(artifacts.length, 2);
+  assert.equal(result.artifactCount, 2);
+  assert.equal(result.latestArtifactId, artifacts[1]?.id);
+});

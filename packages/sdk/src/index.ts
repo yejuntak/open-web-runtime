@@ -1,4 +1,4 @@
-import type { RuntimeEvent, TaskRecord } from "@owr/core";
+import type { ArtifactMetadata, RuntimeEvent, TaskRecord } from "@owr/core";
 
 export type CreateTaskInput = {
   goal: string;
@@ -29,7 +29,7 @@ export class OWRClient {
     return headers;
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  private async response(path: string, init?: RequestInit): Promise<Response> {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
       ...init,
       headers: this.headers(init?.headers)
@@ -38,14 +38,18 @@ export class OWRClient {
       const text = await response.text();
       throw new Error(`OWR HTTP ${response.status}: ${text.slice(0, 1000)}`);
     }
-    return response.json() as Promise<T>;
+    return response;
+  }
+
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    return (await this.response(path, init)).json() as Promise<T>;
   }
 
   health(): Promise<{ ok: boolean; version: string }> {
     return this.request("/health");
   }
 
-  createTask(input: CreateTaskInput): Promise<TaskRecord> {
+  createTask(input: CreateTaskInput): Promise<TaskRecord & { inspectorUrl?: string }> {
     return this.request("/v1/tasks", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -65,15 +69,29 @@ export class OWRClient {
     });
   }
 
+  listArtifacts(taskId: string): Promise<ArtifactMetadata[]> {
+    return this.request(`/v1/tasks/${encodeURIComponent(taskId)}/artifacts`);
+  }
+
+  async artifactBlob(artifactId: string): Promise<Blob> {
+    return (await this.response(`/v1/artifacts/${encodeURIComponent(artifactId)}`)).blob();
+  }
+
+  artifactUrl(artifactId: string): string {
+    return `${this.baseUrl}/v1/artifacts/${encodeURIComponent(artifactId)}`;
+  }
+
+  inspectorUrl(taskId: string): string {
+    return `${this.baseUrl}/inspect/${encodeURIComponent(taskId)}`;
+  }
+
   async *events(taskId: string, signal?: AbortSignal): AsyncGenerator<RuntimeEvent | { type: "task.snapshot"; task: TaskRecord }> {
-    const response = await this.fetchImpl(
-      `${this.baseUrl}/v1/tasks/${encodeURIComponent(taskId)}/events`,
-      { headers: this.headers({ accept: "text/event-stream" }), signal }
+    const response = await this.response(
+      `/v1/tasks/${encodeURIComponent(taskId)}/events`,
+      { headers: { accept: "text/event-stream" }, signal }
     );
-    if (!response.ok || !response.body) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`OWR event stream HTTP ${response.status}: ${text.slice(0, 1000)}`);
-    }
+
+    if (!response.body) throw new Error("OWR event stream returned no response body");
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
