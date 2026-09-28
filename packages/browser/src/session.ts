@@ -70,6 +70,46 @@ export class PlaywrightBrowserSession implements BrowserSession {
     };
   }
 
+  async extractDocument() {
+    const [title, text, description, canonicalHref, rawLinks] = await Promise.all([
+      this.page.title(),
+      this.page.locator("body").innerText({ timeout: 5000 }).catch(() => ""),
+      this.page.locator('meta[name="description"]').first().getAttribute("content").catch(() => null),
+      this.page.locator('link[rel="canonical"]').first().getAttribute("href").catch(() => null),
+      this.page.locator("a[href]").evaluateAll(elements =>
+        elements.slice(0, 500).map(element => ({
+          text: (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 300),
+          href: element.getAttribute("href") ?? ""
+        }))
+      ).catch(() => [])
+    ]);
+
+    const baseUrl = this.page.url();
+    const links = rawLinks.flatMap(link => {
+      if (!link.href) return [];
+      try {
+        return [{ text: link.text, href: new URL(link.href, baseUrl).toString() }];
+      } catch {
+        return [];
+      }
+    });
+
+    let canonicalUrl: string | undefined;
+    if (canonicalHref) {
+      try { canonicalUrl = new URL(canonicalHref, baseUrl).toString(); } catch { canonicalUrl = undefined; }
+    }
+
+    return {
+      url: baseUrl,
+      title,
+      text: text.replace(/\n{3,}/g, "\n\n").trim(),
+      links,
+      fetchedAt: new Date().toISOString(),
+      ...(description ? { description } : {}),
+      ...(canonicalUrl ? { canonicalUrl } : {})
+    };
+  }
+
   private node(nodeId: string): SemanticNode {
     const node = this.lastObservation?.nodes.find(candidate => candidate.id === nodeId);
     if (!node) throw new Error(`Semantic node ${nodeId} is not present in the latest observation`);
