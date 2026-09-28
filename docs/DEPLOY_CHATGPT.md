@@ -70,7 +70,7 @@ CAPTURE_SCREENSHOTS=false
 LIVE_FRAMES=false
 ```
 
-Do not expose an unauthenticated write-capable MCP server publicly for production. For a durable shared deployment, add an authentication mechanism supported by your ChatGPT custom-app configuration before enabling browser write actions.
+Do not expose an unauthenticated write-capable MCP server publicly for production. `OWR_API_TOKEN` is not a substitute for ChatGPT MCP authentication. For a durable shared deployment, add MCP-compatible OAuth 2.1 before enabling browser write actions.
 
 ## Connect in ChatGPT
 

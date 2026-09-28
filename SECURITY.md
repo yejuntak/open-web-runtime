@@ -27,3 +27,8 @@ Both can contain credentials, personal information, or other sensitive page cont
 ## Trace redaction
 
 The execution engine uses full action payloads only for the immediate browser operation. Persisted step records and approval/event payloads redact typed text and select values to lengths, and traced navigation removes credentials, query strings, and fragments. Task goals and final results remain user-controlled data and may still contain sensitive information.
+
+
+## Public MCP authentication
+
+Do not rely on `OWR_API_TOKEN` as the authentication mechanism for a published ChatGPT MCP app. ChatGPT's MCP authentication contract uses OAuth 2.1 for authenticated servers and does not present arbitrary customer API keys. For personal development, prefer a private runtime exposed through Secure MCP Tunnel. A public write-capable MCP deployment must add a conforming OAuth resource/authorization server or sit behind infrastructure that provides the required MCP OAuth flow.

@@ -389,3 +389,8 @@ See [docs/ROADMAP.md](./docs/ROADMAP.md).
 ## License
 
 Apache License 2.0.
+
+
+## MCP authentication note
+
+`OWR_API_TOKEN` is not ChatGPT MCP OAuth. It can protect direct REST/MCP requests from ordinary HTTP clients, but ChatGPT does not accept an arbitrary customer API key as the authentication contract for a published custom MCP server. For local/private development, use Secure MCP Tunnel. For a public write-capable deployment, implement MCP-compatible OAuth 2.1 before exposing browser actions.
