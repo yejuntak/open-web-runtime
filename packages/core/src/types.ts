@@ -85,6 +85,26 @@ export type StepRecord = {
   durationMs: number;
 };
 
+export type ArtifactKind = "screenshot";
+
+export type ArtifactMetadata = {
+  id: string;
+  taskId: string;
+  kind: ArtifactKind;
+  mimeType: string;
+  byteLength: number;
+  createdAt: string;
+  step?: number;
+  label?: string;
+  url?: string;
+  title?: string;
+};
+
+export type BrowserFrame = {
+  data: Uint8Array;
+  mimeType: string;
+};
+
 export type TaskStatus = "queued" | "running" | "waiting_for_approval" | "completed" | "failed" | "cancelled";
 
 export type TaskRecord = {
@@ -99,11 +119,14 @@ export type TaskRecord = {
   steps: StepRecord[];
   browser?: { backend: string; debugUrl?: string };
   approval?: { reason: string; action: AgentAction };
+  latestArtifactId?: string;
+  artifactCount?: number;
 };
 
 export type RuntimeEvent =
   | { type: "task.created"; taskId: string; at: string }
   | { type: "browser.ready"; taskId: string; at: string; backend: string; debugUrl?: string }
+  | { type: "artifact.created"; taskId: string; at: string; artifact: ArtifactMetadata }
   | { type: "step.started"; taskId: string; at: string; step: number; action: AgentAction }
   | { type: "step.completed"; taskId: string; at: string; step: number; url: string; title: string; durationMs: number }
   | { type: "step.failed"; taskId: string; at: string; step: number; error: string; durationMs: number }
@@ -117,6 +140,7 @@ export interface BrowserSession {
   debugUrl?: string;
   observe(): Promise<PageObservation>;
   execute(action: AgentAction): Promise<void>;
+  screenshot?(): Promise<BrowserFrame>;
   close(): Promise<void>;
 }
 
