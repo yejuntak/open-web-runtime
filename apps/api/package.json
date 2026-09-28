@@ -4,10 +4,16 @@
   "private": true,
   "type": "module",
   "main": "./dist/server.js",
-  "scripts": { "build": "tsc -b", "dev": "tsx src/server.ts" },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx src/server.ts"
+  },
   "dependencies": {
     "@owr/core": "0.1.0",
     "@owr/browser": "0.1.0",
-    "@owr/search": "0.1.0"
+    "@owr/search": "0.1.0",
+    "@modelcontextprotocol/server": "2.1.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "zod": "4.6.5"
   }
 }

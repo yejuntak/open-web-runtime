@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "open-web-runtime",
+  "version": "0.2.0",
+  "description": "Self-hosted rendered web search, fetch, and interactive browser tools for ChatGPT and Codex.",
+  "author": {
+    "name": "Yejun Tak"
+  },
+  "repository": "https://github.com/yejuntak/open-web-runtime",
+  "license": "Apache-2.0",
+  "keywords": ["browser", "mcp", "web", "automation", "agent"]
+}

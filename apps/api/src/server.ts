@@ -3,6 +3,7 @@ import { browserProviderFromEnv } from "@owr/browser";
 import { AgentRuntime, BrowserSessionRegistry, createRunManifest, OpenAICompatiblePlanner, parseAgentAction, WebFetcher } from "@owr/core";
 import { searchProviderFromEnv } from "@owr/search";
 import { inspectorHtml } from "./inspector.js";
+import { createOpenWebMcpNodeHandler } from "./mcp.js";
 
 const planner = new OpenAICompatiblePlanner({
   baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
@@ -39,6 +40,7 @@ const browserSessions = new BrowserSessionRegistry(browserProvider, {
   requireConfirmationForHighRisk: process.env.REQUIRE_CONFIRMATION_FOR_HIGH_RISK !== "false"
 });
 const browserSweep = setInterval(() => { void browserSessions.sweepExpired(); }, 60000);
+const mcpNodeHandler = createOpenWebMcpNodeHandler({ webFetcher, searchProvider, browserSessions });
 browserSweep.unref();
 
 function json(res: ServerResponse, status: number, value: unknown): void {
@@ -106,11 +108,17 @@ const server = createServer(async (req, res) => {
 
     if (!authorized(req)) return unauthorized(res);
 
+    if (url.pathname === "/mcp") {
+      void mcpNodeHandler(req, res);
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/") {
       return json(res, 200, {
         name: "Open Web Runtime",
         version: "0.1.0",
         endpoints: [
+          "MCP /mcp",
           "GET /v1/browser/sessions",
           "POST /v1/browser/sessions",
           "GET /v1/browser/sessions/:id/observe",

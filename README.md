@@ -109,6 +109,22 @@ Then observe or submit typed actions through `/v1/browser/sessions/:id/observe` 
 
 Semantic IDs such as `b44` are derived from Chromium backend DOM identities. Observation does not inject private attributes into the target page.
 
+## ChatGPT / Codex MCP mode — no OpenAI API key required
+
+This is the intended TinyFish-replacement path. ChatGPT or Codex is the planner; Open Web Runtime only executes web tools. The MCP endpoint is:
+
+```text
+/mcp
+```
+
+For this mode, leave `LLM_API_KEY` empty. Start the runtime, expose it through a stable HTTPS endpoint or Secure MCP Tunnel, then connect that HTTPS `/mcp` URL once in ChatGPT developer mode. After the plugin is connected, the host model can call `web_fetch`, `web_search`, and the `browser_*` tools directly.
+
+The repository includes `plugin.json`, `skills/open-web-browser/SKILL.md`, and `mcp.example.json` as the portable plugin package starting point.
+
+## Standalone Agent mode — optional API key
+
+The REST `/v1/tasks` Agent endpoint is optional. It runs its own planner and therefore needs an LLM API key. You do not need this endpoint when ChatGPT/Codex is connected through MCP.
+
 ## Quick start
 
 Node 22+ and Chrome/Chromium are required for local mode.
@@ -118,13 +134,15 @@ npm ci
 cp .env.example .env
 ```
 
-Set at minimum:
+For MCP mode, no model credential is required:
 
 ```bash
-LLM_API_KEY=...
+LLM_API_KEY=
 ```
 
-For the default OpenAI configuration, `LLM_API_MODE=responses` and `LLM_MODEL=gpt-5.6` are used. Current OpenAI flagship models are documented for the Responses API. For providers exposing the older OpenAI-compatible Chat Completions surface, set:
+Only if you also want the optional standalone Agent endpoint, set `LLM_API_KEY`.
+
+For the default standalone OpenAI configuration, `LLM_API_MODE=responses` and `LLM_MODEL=gpt-5.6` are used. Current OpenAI flagship models are documented for the Responses API. For providers exposing the older OpenAI-compatible Chat Completions surface, set:
 
 ```bash
 LLM_API_MODE=chat_completions
@@ -146,7 +164,7 @@ The API listens on `http://localhost:8787` by default.
 
 ```bash
 cp .env.example .env
-# add LLM_API_KEY
+# LLM_API_KEY may stay empty for MCP mode
 docker compose up --build
 ```
 
@@ -350,7 +368,7 @@ The next reliability milestones are:
 - BrowserGym/WebArena evaluation
 - worker/concurrency layer
 - encrypted browser profiles
-- MCP adapter
+- production OAuth for public MCP deployments
 
 See [docs/ROADMAP.md](./docs/ROADMAP.md).
 

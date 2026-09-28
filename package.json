@@ -12,7 +12,8 @@
     "typecheck": "tsc -b --pretty false",
     "test": "tsx --test packages/*/test/*.test.ts",
     "dev": "tsx apps/api/src/server.ts",
-    "test:e2e": "node scripts/e2e-smoke.mjs"
+    "test:e2e": "node scripts/e2e-smoke.mjs",
+    "test:mcp": "node scripts/mcp-no-key-smoke.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -21,6 +22,7 @@
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
-    "playwright": "^1.55.0"
+    "playwright": "^1.55.0",
+    "@modelcontextprotocol/client": "2.1.0"
   }
 }
