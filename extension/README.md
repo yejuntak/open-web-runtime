@@ -21,6 +21,7 @@ The local bridge exposes these MCP tools:
 - `video_inspect_shared_tab`: seek an accessible HTML video and return timestamped JPEGs + exposed text-track cues.
 - `shared_tab_snapshot`: capture one visible frame.
 - `shared_tab_burst`: capture multiple visible frames over time without DOM seeking. This is the fallback for players whose DOM video cannot be inspected.
+- `shared_tab_audio_clip`: after **you explicitly click Enable audio**, return a bounded 1–30 second WebM/Opus audio clip as an MCP audio block. OWR does not transcribe it.
 
 The extension only connects to `ws://127.0.0.1:*/bridge` or `ws://localhost:*/bridge`, and the bridge listens on loopback only.
 
@@ -28,6 +29,8 @@ The extension only connects to `ws://127.0.0.1:*/bridge` or `ws://localhost:*/br
 
 This is a visual evidence path, not a bypass. If the browser itself shows login/consent/challenge or cannot play the media, OWR will not defeat it. `shared_tab_burst` captures the visible tab, so private information visible in that tab can appear in returned images. Share only the intended tab, and stop sharing when done.
 
-Audio transcription is not implemented in this extension version. DRM/protected content can still produce black or blocked captures.
+Audio is **off by default**. Clicking Enable audio asks Chrome at runtime for optional `tabCapture` and `offscreen` permissions. Chrome may show a warning for tabCapture. OWR then captures only the already-shared tab and forwards the captured audio back to your speakers so enabling capture should not intentionally mute the tab. Stop sharing or click Disable audio to stop the stream.
 
-Chrome caps visible-tab capture at 2 calls per second, so OWR burst capture enforces a minimum 500ms interval. The extension intentionally requests only `activeTab` and `scripting`; it does not request `tabs`, `storage`, `tabCapture`, or `<all_urls>` permissions.
+The MCP tool returns base64 audio with its MIME type; transcription is not implemented. Whether an MCP host can reason directly over the returned audio depends on that host's audio-content support. DRM/protected content can still produce blocked capture.
+
+Chrome caps visible-tab capture at 2 calls per second, so OWR burst capture enforces a minimum 500ms interval. The extension's **required** permissions remain only `activeTab` and `scripting`. `tabCapture` and `offscreen` are declared as optional permissions and requested only from the explicit Enable audio click. It does not request `tabs`, `storage`, cookie, history, webRequest, or `<all_urls>` permissions.

@@ -20,7 +20,13 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - name: Validate local bridge protocol, MCP image transport and least-privilege extension manifest
+      - name: Syntax-check extension and bridge code
+        run: |
+          node --check extension/service-worker.js
+          node --check extension/popup.js
+          node --check extension/offscreen.js
+          node --check scripts/tab-share-mcp.mjs
+      - name: Validate local bridge protocol, MCP image/audio transport and least-privilege optional permissions
         run: node scripts/tab-share-bridge-smoke.mjs
         env:
           LLM_API_KEY: ""
