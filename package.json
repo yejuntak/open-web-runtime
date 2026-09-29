@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false",
@@ -16,9 +19,12 @@
     "test:mcp": "node scripts/mcp-no-key-smoke.mjs",
     "test:video": "node scripts/video-smoke.mjs",
     "test:media": "node scripts/mcp-media-smoke.mjs",
-    "test:public-video": "node scripts/public-video-probe.mjs"
+    "test:public-video": "node scripts/public-video-probe.mjs",
+    "accept:social-video": "node scripts/accept-shared-video.mjs"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",

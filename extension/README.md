@@ -34,3 +34,17 @@ Audio is **off by default**. Clicking Enable audio asks Chrome at runtime for op
 The MCP tool returns base64 audio with its MIME type; transcription is not implemented. Whether an MCP host can reason directly over the returned audio depends on that host's audio-content support. DRM/protected content can still produce blocked capture.
 
 Chrome caps visible-tab capture at 2 calls per second, so OWR burst capture enforces a minimum 500ms interval. The extension's **required** permissions remain only `activeTab` and `scripting`. `tabCapture` and `offscreen` are declared as optional permissions and requested only from the explicit Enable audio click. It does not request `tabs`, `storage`, cookie, history, webRequest, or `<all_urls>` permissions.
+
+## One-command real-site acceptance
+
+After building the repo and loading this extension, run:
+
+```bash
+npm run accept:social-video -- \\
+  --url 'PASTE_EXACT_INSTAGRAM_YOUTUBE_OR_X_VIDEO_URL' \\
+  --times 1,5,10 \\
+  --audio-seconds 8 \\
+  --out ./acceptance-evidence
+```
+
+The command prints the local bridge URL and a one-time pairing token, then waits for you to share the exact tab. It first tries true timestamp sampling. If the player is not DOM-accessible, it falls back to visible-tab burst capture and labels the result partial/inconclusive rather than pretending timestamps were sampled. If audio was requested, it waits for you to explicitly enable audio in the extension and saves the MCP audio block. The output folder contains images/audio plus `report.json` with SHA-256 hashes and the exact evidence status.
