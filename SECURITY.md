@@ -1,34 +1,27 @@
-# Security
+# Security and supported deployment boundary
 
-Open Web Runtime executes browser actions and should be treated as a privileged automation component.
+**Developer preview for one trusted operator in an isolated environment. Not an internet-facing, multi-tenant browser service.**
 
-Default protections:
-- only http/https navigation;
-- private and local network targets are blocked by default;
-- URL-embedded credentials are rejected;
-- consequential controls require human approval by default;
-- the planner cannot return arbitrary JavaScript;
-- secrets and form values are not intentionally written to task traces.
+A browser executes untrusted pages and can send requests or modify external accounts. A no-model-key architecture does not eliminate these risks.
 
-Do not expose the API directly to the public internet without authentication, tenancy isolation, rate limits, and an outbound network policy.
+## Existing controls
 
-Report security issues privately to the repository owner rather than opening a public issue.
+Typed actions limit what the planner requests. Consequential control labels require confirmation; direct Browser/MCP keyboard and implicit-submit actions now have a confirmation check as well. Sensitive typed/select action payloads are reduced in stored traces. Video capture rejects protected-media state, stale IDs, invalid times, hidden/unloaded players, and source changes. Session operations are serialized and active operations are not expired by the idle sweeper.
 
-## Browser images
+These are application controls, not complete authorization or security boundaries. A caller-provided confirmed flag is a declaration, not cryptographic proof of a human approval. Labels are heuristic. Forms may autosave. Page text and captions are untrusted and cannot authorize actions.
 
-When enabled, the inspector can expose browser content through two channels:
+## Known gaps: do not overclaim
 
-- live screencast frames: only the newest frame is held in memory and is removed when execution ends;
-- screenshot artifacts: bounded per task, but retained in memory for later inspection.
+Navigation policy performs URL/host checks. It does not yet enforce a complete DNS/redirect/subresource/WebSocket/rebinding egress policy. Do not describe it as SSRF-proof. The browser must run behind externally enforced outbound restrictions that deny private networks, link-local metadata, and operator control-plane services.
 
-Both can contain credentials, personal information, or other sensitive page content even when structured traces avoid recording form values. Disable them with `LIVE_FRAMES=false` and/or `CAPTURE_SCREENSHOTS=false` for sensitive workloads. Production deployments should replace the in-memory artifact store with an encrypted, access-controlled backend and explicit retention policy.
+MCP_ONLY restricts route exposure; it is not authentication. OWR_API_TOKEN is a shared bearer guard, not tenant isolation or a complete OAuth implementation. Public MCP access needs an appropriate authenticated MCP deployment plus independent security review. No public endpoint should be enabled with browser write access merely because CI passed.
 
+Tasks, session state, artifacts, and traces are in memory. Per-task limits do not establish a global memory bound. A process supervisor and resource limits are required. Worker recovery, durable state, comprehensive request cancellation, and multi-user identity isolation are incomplete.
 
-## Trace redaction
+Screenshots, video frames, captions, page text, goals, final results, error text, and URL paths can contain private information even when action strings are redacted. Do not publish these outputs without reviewing them. The sample acceptance fixtures contain only project-owned test data. No cookies, private profiles, or signed media URLs should be exported to a model or CI logs.
 
-The execution engine uses full action payloads only for the immediate browser operation. Persisted step records and approval/event payloads redact typed text and select values to lengths, and traced navigation removes credentials, query strings, and fragments. Task goals and final results remain user-controlled data and may still contain sensitive information.
+The remote CDP adapter is only for a dedicated, operator-authorized browser. It is not a tenant-isolation boundary and must not attach indiscriminately to a personal default profile. Authentication, CAPTCHA, DRM and paywall restrictions must not be bypassed.
 
+## Reporting
 
-## Public MCP authentication
-
-Do not rely on `OWR_API_TOKEN` as the authentication mechanism for a published ChatGPT MCP app. ChatGPT's MCP authentication contract uses OAuth 2.1 for authenticated servers and does not present arbitrary customer API keys. For personal development, prefer a private runtime exposed through Secure MCP Tunnel. A public write-capable MCP deployment must add a conforming OAuth resource/authorization server or sit behind infrastructure that provides the required MCP OAuth flow.
+Report sensitive vulnerabilities privately to the repository owner. Public issues are suitable for the already-documented readiness gaps, not for exposing private credentials or live exploitation details.

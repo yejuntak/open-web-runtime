@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-
-test("MCP_ONLY env is documented as a boolean deployment mode", () => {
-  const value = "true";
-  assert.equal(value === "true", true);
-});
+import { BrowserSessionRegistry, type BrowserProvider, type PageObservation } from "../src/index.js";
+const page: PageObservation={url:"https://example.com",title:"test",timestamp:"2026-09-29T00:00:00Z",nodes:[],textPreview:"",accessibilitySummary:[]};
+function fixture(){let executed=0;const provider:BrowserProvider={async createSession(){return {backend:"fake",async observe(){return page;},async execute(){executed++;},async close(){}};}};return {provider,count:()=>executed};}
+test("implicit keyboard submit requires confirmation",async()=>{const f=fixture();const r=new BrowserSessionRegistry(f.provider);const s=await r.create();const result=await r.act(s.id,{type:"press",key:"Enter"});assert.equal(result.executed,false);assert.equal(f.count(),0);assert.equal((await r.act(s.id,{type:"press",key:"Enter"},true)).executed,true);assert.equal(f.count(),1);await r.closeAll();});
+test("idle sweeper does not close an active extension operation",async()=>{const f=fixture();const r=new BrowserSessionRegistry(f.provider,{ttlMs:1});const s=await r.create();let finish!:()=>void;const pending=r.withSession(s.id,()=>new Promise<void>(resolve=>{finish=resolve;}));await Promise.resolve();assert.equal(await r.sweepExpired(Date.now()+10000),0);finish();await pending;assert.equal(await r.sweepExpired(Date.now()+10000),1);});
+test("session limits reject invalid configuration",()=>{const f=fixture();assert.throws(()=>new BrowserSessionRegistry(f.provider,{maxSessions:0}));assert.throws(()=>new BrowserSessionRegistry(f.provider,{ttlMs:NaN}));});

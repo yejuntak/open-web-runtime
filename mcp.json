@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "open-web-runtime": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["apps/api/dist/stdio.js"],
+      "cwd": "${PLUGIN_ROOT}",
+      "env": {
+        "LLM_API_KEY": "",
+        "ALLOW_PRIVATE_NETWORKS": "false"
+      }
+    }
+  }
+}
