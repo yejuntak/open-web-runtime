@@ -1,0 +1,27 @@
+name: Shared Tab Extension Acceptance
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shared-tab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bridge-and-extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Validate local bridge protocol, MCP image transport and least-privilege extension manifest
+        run: node scripts/tab-share-bridge-smoke.mjs
+        env:
+          LLM_API_KEY: ""
+          OPENAI_API_KEY: ""

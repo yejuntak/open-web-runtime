@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "OWR Shared Tab",
+  "version": "0.1.0",
+  "description": "Share exactly one user-authorized tab with a local Open Web Runtime MCP bridge.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Share this tab with OWR"
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' ws://127.0.0.1:* ws://localhost:*"
+  }
+}
