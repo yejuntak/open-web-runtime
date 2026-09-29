@@ -1,0 +1,42 @@
+name: Media Acceptance
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: media-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  video-and-mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm test
+      - run: npx playwright install --with-deps --only-shell chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: node scripts/video-smoke.mjs
+      - run: node scripts/mcp-media-smoke.mjs
+      - run: node scripts/mcp-offline-media-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: video-acceptance-${{ github.sha }}
+          path: test-results/video/
+          if-no-files-found: error
+      - name: Package exact tested runtime for offline verification
+        run: tar -czf /tmp/owr-tested-runtime.tgz package.json package-lock.json tsconfig*.json apps packages scripts node_modules mcp.json plugin.json skills LICENSE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-runtime-${{ github.sha }}
+          path: /tmp/owr-tested-runtime.tgz
+          retention-days: 7
+          if-no-files-found: error

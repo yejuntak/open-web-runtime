@@ -2,7 +2,7 @@ services:
   open-web-runtime:
     image: ghcr.io/yejuntak/open-web-runtime:latest
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     environment:
       HOST: 0.0.0.0
       PORT: 8787

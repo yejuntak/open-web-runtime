@@ -1,109 +1,36 @@
-# Deploy Open Web Runtime for ChatGPT
+# Connecting an actual client
 
-The intended architecture is:
+OWR has two execution transports. Neither requires an OpenAI API key. Installing/authorizing a tool in a host is distinct from building and testing the server.
 
-```text
-ChatGPT / Codex
-      |
-      | MCP
-      v
-https://your-host.example/mcp
-      |
-Open Web Runtime
-      |
-Chromium
-```
+## Local stdio host
 
-The host model is the planner. Open Web Runtime does not need an OpenAI API key in MCP mode.
-
-## Option A — local/private server
-
-Run:
+For a compatible local MCP client, no Railway, public URL, or second LLM is necessary:
 
 ```bash
 npm ci
-npx playwright install chromium
-cp .env.example .env
 npm run build
-npm run dev
+npx playwright install chromium
+node scripts/configure-client.mjs
 ```
 
-Leave:
+Use the generated absolute-path configuration in the client. The root mcp.json also declares a stdio server using the standard PLUGIN_ROOT working-directory convention for supporting plugin hosts. It requires an already built project and available Chromium. Launch the entry with Node directly; do not put npm log output on an MCP protocol stream.
 
-```bash
-LLM_API_KEY=
-```
+## ChatGPT remote connection
 
-ChatGPT cannot connect directly to localhost. OpenAI's current guidance is to use Secure MCP Tunnel for an MCP server on a developer machine or private network.
+Use a running, appropriately authenticated HTTPS MCP endpoint or supported secure tunnel. Follow the current client documentation, because availability, menus and workspace policies change:
 
-Connect the resulting secure HTTPS MCP URL, ending in `/mcp`, as a custom app in ChatGPT developer mode.
+- https://developers.openai.com/plugins/deploy/connect-chatgpt
+- https://developers.openai.com/plugins/build/plugins
+- https://agent-plugins.org/schemas/1.0.0/mcp.schema.json
 
-## Option B — Railway
+Register the connection, inspect/authorize the exposed tools, refresh metadata after updates, and exercise the tools in the actual client. A GitHub URL or ZIP does not itself create an authorized remote tool. No plan-specific read/write entitlement is assumed here.
 
-This repository contains `railway.json` and a production Dockerfile.
+## Installation acceptance
 
-Create a Railway service from:
+After connection, call runtime_info. Confirm the video tools appear. Open an authorized test page, inspect a real video using video_list/video_sample, verify that the client receives and can display image blocks, read exposed captions where available, and close the session. Also test a blocked page: the assistant must report the block instead of claiming it watched content.
 
-```text
-https://github.com/yejuntak/open-web-runtime
-```
+Only this actual host-level test establishes client usability. A generic MCP client integration test is necessary but not sufficient to claim that a particular user's ChatGPT account is connected.
 
-Railway will use the root Dockerfile. The checked-in configuration uses `/health` as the deploy health check.
+## Deployment caution
 
-MCP mode does not require these:
-
-```text
-LLM_API_KEY
-LLM_MODEL
-LLM_BASE_URL
-```
-
-Recommended runtime variables:
-
-```text
-MCP_ONLY=true
-HEADLESS=true
-ALLOW_PRIVATE_NETWORKS=false
-MAX_BROWSER_SESSIONS=4
-BROWSER_SESSION_TTL_MS=300000
-CAPTURE_SCREENSHOTS=false
-LIVE_FRAMES=false
-```
-
-Do not expose an unauthenticated write-capable MCP server publicly for production. `OWR_API_TOKEN` is not a substitute for ChatGPT MCP authentication. For a durable shared deployment, add MCP-compatible OAuth 2.1 before enabling browser write actions.
-
-## Connect in ChatGPT
-
-Current OpenAI workflow:
-
-1. Enable Developer mode for an eligible account/workspace.
-2. Open Settings / Workspace Settings → Apps → Create.
-3. Enter the remote MCP endpoint:
-   `https://YOUR-HOST/mcp`.
-4. Select the appropriate authentication mechanism.
-5. Scan tools.
-6. Create the draft app.
-7. Start a new chat and select or @mention the app when the message needs new browser execution.
-
-The server exposes:
-
-- `web_search`
-- `web_fetch`
-- `browser_open`
-- `browser_sessions`
-- `browser_observe`
-- `browser_navigate`
-- `browser_click`
-- `browser_type`
-- `browser_select`
-- `browser_press`
-- `browser_scroll`
-- `browser_wait`
-- `browser_screenshot`
-- `browser_close`
-
-`browser_click` preserves Open Web Runtime's consequential-action gate. If it returns `confirmationRequired`, the host model should ask the user before retrying with `confirmed=true`.
-
-## Plan limitation
-
-ChatGPT availability for custom MCP actions is controlled by ChatGPT itself. OpenAI's current documentation says full MCP, including write/modify actions, is available to Business and Enterprise/Edu, while Pro custom MCP access can be limited to read/fetch permissions. This repository cannot bypass those product permissions.
+Use [SECURITY.md](../SECURITY.md) as the boundary. Docker publication is not hosting. MCP_ONLY is not auth, and URL checks alone are not complete network isolation. Do not publish an unauthenticated browser executor. Railway remains optional; this project does not presume a connected Railway account.
