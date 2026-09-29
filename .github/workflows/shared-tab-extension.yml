@@ -28,6 +28,8 @@ jobs:
           node --check scripts/tab-share-mcp.mjs
       - name: Validate local bridge protocol, MCP image/audio transport and least-privilege optional permissions
         run: node scripts/tab-share-bridge-smoke.mjs
+      - name: Validate one-command social-video acceptance orchestration
+        run: node scripts/social-video-acceptance-cli-smoke.mjs
         env:
           LLM_API_KEY: ""
           OPENAI_API_KEY: ""
