@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
-import { mkdirSync,writeFileSync } from 'node:fs';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { mkdirSync,writeFileSync,readFileSync } from 'node:fs';
 import { Client,StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { makeVideoFixture,videoFixtureHtml } from './video-fixture.mjs';
@@ -63,5 +64,10 @@ try {
       if(child && child.exitCode===null){child.kill('SIGTERM');await new Promise(r=>{child.once('exit',r);setTimeout(()=>{child.kill('SIGKILL');r();},3000).unref();});}
     }
   }
+  const cli=await promisify(execFile)(process.execPath,['scripts/inspect-video.mjs','--url',url,'--times','0.2,1.4,2.8','--player','Primary test video','--out','test-results/video/cli'],{env:{...process.env,LLM_API_KEY:'',OPENAI_API_KEY:'',ALLOW_PRIVATE_NETWORKS:'true',REMOTE_CDP_URL:''},timeout:60000});
+  const cliReport=JSON.parse(readFileSync('test-results/video/cli/report.json','utf8'));
+  assert.equal(cliReport.status,'passed',cli.stdout);assert.equal(cliReport.frames,3);assert.equal(cliReport.modelApiKeyUsed,false);
+  results.push({transport:'CLI over stdio',status:'passed',modelKey:false,frames:3});
+  console.log('MCP_MEDIA_PASS',JSON.stringify(results.at(-1)));
   mkdirSync('test-results/video',{recursive:true});writeFileSync('test-results/video/mcp-transports.json',JSON.stringify({results},null,2));
 } finally {clearTimeout(timeout);await close(fixture);}
