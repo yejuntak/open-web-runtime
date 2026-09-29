@@ -29,3 +29,5 @@ The extension only connects to `ws://127.0.0.1:*/bridge` or `ws://localhost:*/br
 This is a visual evidence path, not a bypass. If the browser itself shows login/consent/challenge or cannot play the media, OWR will not defeat it. `shared_tab_burst` captures the visible tab, so private information visible in that tab can appear in returned images. Share only the intended tab, and stop sharing when done.
 
 Audio transcription is not implemented in this extension version. DRM/protected content can still produce black or blocked captures.
+
+Chrome caps visible-tab capture at 2 calls per second, so OWR burst capture enforces a minimum 500ms interval. The extension intentionally requests only `activeTab` and `scripting`; it does not request `tabs`, `storage`, `tabCapture`, or `<all_urls>` permissions.

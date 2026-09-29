@@ -238,7 +238,7 @@ async function snapshotSharedTab() {
 
 async function burstSharedTab(payload) {
   const count = Math.max(2, Math.min(8, Number(payload.count || 4)));
-  const intervalMs = Math.max(200, Math.min(3000, Number(payload.intervalMs || 750)));
+  const intervalMs = Math.max(500, Math.min(3000, Number(payload.intervalMs || 750)));
   return withFocusedTab(async tab => {
     const images = [];
     const frames = [];

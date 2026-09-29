@@ -12,7 +12,7 @@ const images = ['aGVsbG8=', 'd29ybGQ='];
 try {
   const manifest = JSON.parse(await readFile('extension/manifest.json', 'utf8'));
   assert.equal(manifest.manifest_version, 3);
-  assert.deepEqual(manifest.permissions.sort(), ['activeTab','scripting','storage','tabs'].sort());
+  assert.deepEqual(manifest.permissions.sort(), ['activeTab','scripting'].sort());
   assert.equal(JSON.stringify(manifest).includes('<all_urls>'), false);
 
   await client.connect(new StdioClientTransport({
