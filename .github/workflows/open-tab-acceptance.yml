@@ -1,0 +1,35 @@
+name: Authorized Open-Tab Video Acceptance
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: open-tab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  open-tab-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Real existing-browser MCP inspection with empty model keys
+        run: node scripts/open-tab-video-smoke.mjs
+        env:
+          LLM_API_KEY: ""
+          OPENAI_API_KEY: ""
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: open-tab-evidence-${{ github.sha }}
+          path: test-results/open-tab/
+          if-no-files-found: error
