@@ -3,6 +3,9 @@ let sharedTabId;
 let sharedUrl;
 let keepAliveTimer;
 let generation = 0;
+let audioEnabled = false;
+let audioPlaybackForwarded = false;
+const offscreenUrl = 'offscreen.html';
 
 function normalizeBridgeUrl(input) {
   const u = new URL(input);
@@ -258,6 +261,70 @@ async function burstSharedTab(payload) {
   });
 }
 
+async function ensureOffscreenAudio() {
+  const url = chrome.runtime.getURL(offscreenUrl);
+  const contexts = chrome.runtime.getContexts
+    ? await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'], documentUrls: [url] })
+    : [];
+  if (!contexts.length) {
+    try {
+      await chrome.offscreen.createDocument({
+        url: offscreenUrl,
+        reasons: ['USER_MEDIA'],
+        justification: 'Capture short audio clips only from the explicitly user-authorized shared tab.'
+      });
+    } catch (error) {
+      if (!String(error?.message || error).includes('Only a single offscreen document')) throw error;
+    }
+  }
+}
+
+async function enableAudio(tabId, streamId) {
+  if (!sharedTabId || tabId !== sharedTabId) throw new Error('Audio can only be enabled for the currently shared tab.');
+  if (!streamId || typeof streamId !== 'string') throw new Error('Missing one-time tab audio stream ID.');
+  await ensureOffscreenAudio();
+  const result = await chrome.runtime.sendMessage({ target: 'owr-offscreen-audio', type: 'startAudio', streamId });
+  if (!result?.ok) throw new Error(result?.error || 'Offscreen audio capture failed.');
+  audioEnabled = true;
+  audioPlaybackForwarded = Boolean(result.playbackForwarded);
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'capabilities', audioEnabled: true, audioPlaybackForwarded }));
+  }
+  return { ok: true, audioEnabled, audioPlaybackForwarded };
+}
+
+async function disableAudio() {
+  if (audioEnabled) {
+    await chrome.runtime.sendMessage({ target: 'owr-offscreen-audio', type: 'stopAudio' }).catch(() => undefined);
+  }
+  audioEnabled = false;
+  audioPlaybackForwarded = false;
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'capabilities', audioEnabled: false, audioPlaybackForwarded: false }));
+  }
+  return { ok: true };
+}
+
+async function recordSharedAudio(payload) {
+  if (!audioEnabled) throw new Error('Audio is not enabled. The user must explicitly enable it from the extension popup.');
+  const durationMs = Math.max(1000, Math.min(30000, Math.round(Number(payload.durationMs || 5000))));
+  const result = await chrome.runtime.sendMessage({ target: 'owr-offscreen-audio', type: 'recordAudio', durationMs });
+  if (!result?.ok) throw new Error(result?.error || 'Audio recording failed.');
+  return {
+    report: {
+      schemaVersion: 'owr.shared-tab-audio.v1',
+      durationMs: result.durationMs,
+      byteLength: result.byteLength,
+      mimeType: result.mimeType,
+      audioPermissionExplicit: true,
+      playbackForwarded: audioPlaybackForwarded,
+      transcriptionPerformed: false,
+      captureMode: 'authorized-tab-audio'
+    },
+    audio: { mimeType: result.mimeType, data: result.data }
+  };
+}
+
 async function handleCommand(message) {
   if (!sharedTabId) throw new Error('No tab is currently shared.');
   if (message.command === 'status') {
@@ -267,11 +334,13 @@ async function handleCommand(message) {
   if (message.command === 'inspect_video') return inspectVideo(message.payload || {});
   if (message.command === 'snapshot') return snapshotSharedTab();
   if (message.command === 'burst') return burstSharedTab(message.payload || {});
+  if (message.command === 'audio_record') return recordSharedAudio(message.payload || {});
   throw new Error('Unknown command.');
 }
 
 function stopSharing() {
   generation++;
+  void disableAudio().catch(() => undefined);
   clearInterval(keepAliveTimer);
   keepAliveTimer = undefined;
   if (socket) {
@@ -331,9 +400,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: true });
     return;
   }
+  if (message.type === 'enableAudio') {
+    enableAudio(message.tabId, message.streamId).then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message.type === 'disableAudio') {
+    disableAudio().then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
   if (message.type === 'status') {
     if (!sharedTabId) return sendResponse({ shared: false });
-    chrome.tabs.get(sharedTabId).then(tab => sendResponse({ shared: true, url: tab.url, title: tab.title || '' }), () => sendResponse({ shared: false }));
+    chrome.tabs.get(sharedTabId).then(tab => sendResponse({
+      shared: true, tabId: sharedTabId, url: tab.url, title: tab.title || '',
+      audioEnabled, audioPlaybackForwarded
+    }), () => sendResponse({ shared: false, audioEnabled: false }));
     return true;
   }
 });

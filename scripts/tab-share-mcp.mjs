@@ -122,12 +122,18 @@ http.on('upgrade', (req, rawSocket) => {
             authenticated = true;
             extension = {
               tabId: message.tabId, url: message.url, title: message.title || '',
-              extensionVersion: message.extensionVersion || '', pairedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString()
+              extensionVersion: message.extensionVersion || '', pairedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(),
+              audioEnabled: false, audioPlaybackForwarded: false
             };
             return;
           }
           extension.lastSeenAt = new Date().toISOString();
           if (message.type === 'ping') return;
+          if (message.type === 'capabilities') {
+            extension.audioEnabled = message.audioEnabled === true;
+            extension.audioPlaybackForwarded = message.audioPlaybackForwarded === true;
+            return;
+          }
           if (message.type === 'result' && message.id) {
             const waiter = pending.get(message.id);
             if (!waiter) return;
@@ -168,15 +174,20 @@ function imageToolResult(result) {
 }
 
 const mcp = new McpServer({ name: 'owr-shared-tab', version: '0.1.0' }, {
-  instructions: 'Use only the explicitly user-shared tab. Never request cookies or unrelated tabs. video_inspect_shared_tab may seek/pause the video and restores playback when possible. shared_tab_burst/snapshot only capture visible pixels. Audio is not analyzed.'
+  instructions: 'Use only the explicitly user-shared tab. Never request cookies or unrelated tabs. Visual tools capture only the shared tab. Audio capture is optional and must have been explicitly enabled by the user in the extension popup. Audio clips are evidence only; this server does not transcribe them.'
 });
 mcp.registerTool('shared_tab_status', {
   description: 'Check whether the user has paired exactly one browser tab with the local OWR bridge.',
   inputSchema: z.object({}),
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
 }, async () => ({
-  structuredContent: extension ? { paired: true, url: extension.url, title: extension.title, pairedAt: extension.pairedAt, lastSeenAt: extension.lastSeenAt } : { paired: false },
-  content: [{ type: 'text', text: JSON.stringify(extension ? { paired: true, url: extension.url, title: extension.title } : { paired: false }) }]
+  structuredContent: extension ? {
+    paired: true, url: extension.url, title: extension.title, pairedAt: extension.pairedAt, lastSeenAt: extension.lastSeenAt,
+    audioEnabled: extension.audioEnabled, audioPlaybackForwarded: extension.audioPlaybackForwarded
+  } : { paired: false, audioEnabled: false },
+  content: [{ type: 'text', text: JSON.stringify(extension ? {
+    paired: true, url: extension.url, title: extension.title, audioEnabled: extension.audioEnabled
+  } : { paired: false, audioEnabled: false }) }]
 }));
 mcp.registerTool('video_inspect_shared_tab', {
   description: 'Sample actual JPEG frames at requested timestamps from the one user-authorized shared Instagram/YouTube/X tab when its HTML video is accessible. No login, cookie export or access-control bypass.',
@@ -200,11 +211,37 @@ mcp.registerTool('shared_tab_snapshot', {
   try { return imageToolResult(await command('snapshot')); }
   catch (error) { return { isError: true, content: [{ type: 'text', text: error.message }] }; }
 });
+mcp.registerTool('shared_tab_audio_clip', {
+  description: 'Return a short audio clip from the explicitly shared tab, only after the user has enabled optional audio capture in the extension popup. No transcription is performed.',
+  inputSchema: z.object({
+    duration_seconds: z.number().min(1).max(30).optional()
+  }),
+  annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true }
+}, async ({ duration_seconds }) => {
+  if (!extension?.audioEnabled) return {
+    isError: true,
+    content: [{ type: 'text', text: 'Audio is not enabled. The user must explicitly enable it from the OWR extension popup first.' }]
+  };
+  try {
+    const result = await command('audio_record', { durationMs: Math.round((duration_seconds || 5) * 1000) }, 40000);
+    const audio = result.audio;
+    if (!audio?.data || !audio?.mimeType) throw new Error('Audio capture returned no audio block.');
+    return {
+      structuredContent: result.report || {},
+      content: [
+        { type: 'text', text: JSON.stringify(result.report || {}) },
+        { type: 'audio', data: audio.data, mimeType: audio.mimeType }
+      ]
+    };
+  } catch (error) {
+    return { isError: true, content: [{ type: 'text', text: error.message }] };
+  }
+});
 mcp.registerTool('shared_tab_burst', {
   description: 'Capture 2-8 visible frames over time from the shared tab without seeking the DOM player. This visually samples what the user-authorized tab is actually showing, even when the video element is not inspectable.',
   inputSchema: z.object({
     count: z.number().int().min(2).max(8).optional(),
-    interval_ms: z.number().int().min(200).max(3000).optional()
+    interval_ms: z.number().int().min(500).max(3000).optional()
   }),
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true }
 }, async ({ count, interval_ms }) => {

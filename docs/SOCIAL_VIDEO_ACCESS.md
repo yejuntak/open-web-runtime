@@ -78,7 +78,8 @@ Install and pairing instructions are in `extension/README.md`. This is the prefe
 ## Additional routes / limits
 
 - Microsoft Playwright's extension independently demonstrates the same product pattern: user-approved connection to an existing logged-in browser tab. OWR does not depend on its private extension protocol.
-- Chrome tabCapture/getDisplayMedia remains a future audio/video stream path. The current OWR extension captures timestamped/visible JPEG evidence, not audio.
+- Optional tab audio is now implemented through Chrome `tabCapture` + an offscreen document. It is **not a required permission**: the user must click Enable audio and approve Chrome's runtime permission prompt. `shared_tab_audio_clip` returns a bounded 1–30 second MCP audio block; it does not transcribe or download a raw platform media URL.
+- The audio stream is local to the extension/bridge path and is stopped when sharing ends or the shared tab navigates. OWR attempts to route the captured stream back to the browser's audio output because tabCapture otherwise suppresses local playback.
 - DRM/restrictions can prevent usable capture. No access-control bypass is attempted.
 - Optional direct extraction: yt-dlp includes extractors for all three platforms, but inclusion is not a guarantee of success. Use only for media you are authorized to retrieve. Keep any explicitly authorized browser-cookie use local. Do not upload cookies.txt or send credentials to an AI model.
 
