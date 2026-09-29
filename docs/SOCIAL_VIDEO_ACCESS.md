@@ -65,10 +65,21 @@ The tool is `video_inspect_open_tab`, with `url`, `timestamps`, and optional `pl
 
 The adapter passed a real-Chromium local MCP test with empty model keys. The test used a project-owned offline video and a synthetic cookie. It verified three distinct frames, checksums, playback restoration, preservation of the existing browser and an unrelated tab, retention of the cookie only in the browser, and refusal of duplicate/missing tabs and non-loopback endpoints. This is evidence of correct session reuse, not successful live Instagram/YouTube/X playback. Actual platform acceptance must run in the intended authorized environment with the intended URLs.
 
-## Additional routes, not implemented by this adapter
+## Easier default-profile route: OWR Shared Tab extension
 
-- Existing default-profile integration: Microsoft's Playwright extension provides user-approved tab selection and reuses logged-in browser state. This is a reference integration option, not a claim OWR has implemented that extension protocol.
-- User-approved tab capture: Chrome tabCapture or getDisplayMedia can provide visible-tab media when DOM-level video extraction is unsuitable. It requires a user gesture; DRM/restrictions can prevent capture. OWR has not yet implemented this fallback or audio transcription.
+OWR now includes a companion Manifest V3 extension in `extension/`. This route does not require starting Chrome with a remote-debugging port. The user opens the intended Instagram/YouTube/X video in the browser where it already works, clicks the extension, and explicitly shares that one tab with the local `scripts/tab-share-mcp.mjs` bridge.
+
+The extension uses Chrome's temporary `activeTab` grant and does not request `<all_urls>`. Navigation or closing the tab ends the sharing grant. A random local pairing token is required. The bridge listens only on loopback and exposes no cookie API.
+
+When an accessible HTML video exists, `video_inspect_shared_tab` samples requested timestamps and attempts to restore playback. When the player is not DOM-accessible, `shared_tab_burst` captures 2-8 visible frames over time from the explicitly shared tab. `shared_tab_snapshot` captures one visible frame. These paths can expose whatever is visibly rendered in the shared tab, so share only the requested tab.
+
+Install and pairing instructions are in `extension/README.md`. This is the preferred route for testing live Instagram, YouTube and X in an authorized browser session.
+
+## Additional routes / limits
+
+- Microsoft Playwright's extension independently demonstrates the same product pattern: user-approved connection to an existing logged-in browser tab. OWR does not depend on its private extension protocol.
+- Chrome tabCapture/getDisplayMedia remains a future audio/video stream path. The current OWR extension captures timestamped/visible JPEG evidence, not audio.
+- DRM/restrictions can prevent usable capture. No access-control bypass is attempted.
 - Optional direct extraction: yt-dlp includes extractors for all three platforms, but inclusion is not a guarantee of success. Use only for media you are authorized to retrieve. Keep any explicitly authorized browser-cookie use local. Do not upload cookies.txt or send credentials to an AI model.
 
 Primary references:
