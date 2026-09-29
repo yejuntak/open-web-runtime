@@ -4,6 +4,13 @@ import { createServer } from "node:http";
 
 const smokeEmail = "smoke@example.com";
 const logs = [];
+let apiChild;
+const globalTimeout = setTimeout(() => {
+  console.error("E2E smoke exceeded 90 seconds.");
+  if (apiChild && apiChild.exitCode === null) apiChild.kill("SIGKILL");
+  process.exit(1);
+}, 90_000);
+globalTimeout.unref();
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -159,7 +166,6 @@ const auxiliaryServer = createServer(async (req, res) => {
   }
 });
 
-let apiChild;
 try {
   const fixturePort = await listen(fixtureServer);
   const auxiliaryPort = await listen(auxiliaryServer);
@@ -288,12 +294,22 @@ try {
   if (logs.length) console.error("\nAPI logs:\n" + logs.join(""));
   process.exitCode = 1;
 } finally {
+  clearTimeout(globalTimeout);
   if (apiChild && apiChild.exitCode === null) {
     apiChild.kill("SIGTERM");
     await new Promise(resolve => {
-      apiChild.once("exit", resolve);
-      setTimeout(resolve, 1500).unref();
+      const timer = setTimeout(resolve, 1500);
+      timer.unref();
+      apiChild.once("exit", () => { clearTimeout(timer); resolve(); });
     });
+    if (apiChild.exitCode === null) {
+      apiChild.kill("SIGKILL");
+      await new Promise(resolve => {
+        const timer = setTimeout(resolve, 1000);
+        timer.unref();
+        apiChild.once("exit", () => { clearTimeout(timer); resolve(); });
+      });
+    }
   }
   await Promise.all([closeServer(fixtureServer), closeServer(auxiliaryServer)]);
 }
